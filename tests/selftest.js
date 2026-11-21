@@ -99,3 +99,38 @@ for (const v of ['detailed', 'simple']) {
   assert(s.dev.lock && s.dev.lock.code === 'TIMEOUT' && !s.dev.pump, v + ' quá giờ: ' + JSON.stringify(s.dev.lock));
 }
 console.log('OK — bơm yếu kích hoạt khóa quá thời gian ở cả hai phương án.');
+
+// 11. Hộp nguồn đầy: nước xả về tràn ra bàn (không vượt thành hộp), châm thêm không bao giờ rút nước
+for (const mv of [m, ms]) {
+  const s = Sim.create(mv, { rng }); run(s, 3);
+  for (let i = 0; i < 40; i++) s.lab.addWater(0.5);
+  s.lab.valve(1); s.lab.fault('power', true); run(s, 1200);
+  assert(s.res <= mv.sim.resH + 1e-9, 'nước không cao hơn thành hộp nguồn: ' + s.res);
+  assert(s.events.some((e) => /tràn ra bàn/.test(e.msg)), 'báo tràn hộp nguồn');
+  const r0 = s.res; s.lab.addWater(0.5);
+  assert(s.res >= r0 && !/Châm -/.test(s.events.at(-1).msg), 'châm không ra số âm');
+  assert(Math.abs(s.totalL() - s.base - s.added) < 1e-6, 'bảo toàn nước khi tràn hộp nguồn');
+}
+
+// 12. Đổi thông số khi đang khóa: khóa, chế độ thủ công giữ nguyên; bơm đang chạy không bị khóa chạy khô nhầm
+{ const s = Sim.create(m, { rng }); s.lab.emptySource(); s.level = 10; run(s, 40);
+  assert.strictEqual(s.dev.lock && s.dev.lock.code, 'DRY');
+  s.rebind(Design.compute({ ...Design.defaults(), tankH: 210 })); run(s, 2);
+  assert(s.dev.lock && s.dev.lock.code === 'DRY' && !s.dev.pump, 'đổi thông số không được xóa khóa an toàn');
+  const s2 = Sim.create(m, { rng }); run(s2, 3); s2.cmd('mode', 'manual'); s2.cmd('pump', true); run(s2, 10);
+  s2.rebind(Design.compute({ ...Design.defaults(), tankH: 160 })); run(s2, 25);
+  assert(s2.dev.mode === 'manual' && s2.dev.pump && !s2.dev.lock, 'đổi thông số giữ thủ công, không khóa nhầm: ' + JSON.stringify(s2.dev.lock)); }
+
+// 13. RESET ngay sau khi tắt bơm: relay vẫn nghỉ đủ 5 s
+{ const s = Sim.create(m, { rng }); run(s, 3); s.level = 0.2 * m.sim.usableH; run(s, 2); assert(s.dev.pump);
+  s.cmd('mode', 'manual'); s.cmd('pump', false); run(s, 0.2); const tOff = s.dev.pumpOffAt; s.lab.reset(); run(s, 10);
+  const on = s.events.find((e) => e.t > tOff && /^Bật bơm/.test(e.msg));
+  assert(on && on.t - tOff >= Sim.RELAY_MIN_OFF - 0.11, 'relay nghỉ ≥ 5 s sau RESET: ' + (on && on.t - tOff)); }
+
+// 14. Nhiễu 25 % chạy lâu, nhiều seed: không bao giờ khóa nhầm "không có tiếng vọng"
+for (let sd = 1; sd <= 8; sd++) {
+  let x = sd * 7919; const r2 = () => ((x = (x * 16807) % 2147483647) / 2147483647);
+  const s = Sim.create(m, { rng: r2 }); s.lab.fault('sensor', 'noise'); run(s, 600);
+  assert(!s.dev.lock, `nhiễu seed ${sd} khóa nhầm: ` + JSON.stringify(s.dev.lock));
+}
+console.log('OK — hộp nguồn tràn, đổi thông số khi khóa, relay sau RESET, nhiễu dài hạn.');

@@ -31,7 +31,7 @@
     const rng = (opts && opts.rng) || Math.random;
     const gauss = () => { let u = 0; while (!u) u = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng()); };
     const s = {
-      k: model.sim, t: 0, level: 0, res: 0, tray: 0, valve: 0, added: 0, stuckVal: null,
+      k: model.sim, t: 0, level: 0, res: 0, tray: 0, valve: 0, added: 0, stuckVal: null, resFull: false,
       faults: { leak: false, sensor: 'ok', wifi: false, power: false, weak: false },
       q: { pump: 0, drain: 0, leak: 0, overflow: 0, spill: 0 },
       dev: newDev(), events: [], history: [], acc: { ctrl: 0, ping: 0, hist: 0 },
@@ -72,16 +72,17 @@
       }
       if (raw != null) { d.echoUs = Math.round(raw * 2 / C_SOUND); raw = d.echoUs * C_SOUND / 2; } else d.echoUs = 0;
       d.raw = raw;
+      d.invalid = raw == null ? d.invalid + 1 : 0; // chỉ đếm lần thật sự không có ECHO; số đo ngoài tầm/nhiễu do badHist xử lý
       const inRange = raw != null && raw >= 20 && raw <= k.S + 20;
       let ok = inRange;
       if (ok && d.filt != null && Math.abs(raw - d.filt) > 40) { d.spikes++; ok = d.spikes >= 4; if (ok) d.buf = []; }
       if (ok) {
-        d.spikes = 0; d.invalid = 0;
+        d.spikes = 0;
         d.buf.push(raw); if (d.buf.length > 5) d.buf.shift();
         d.filt = median(d.buf);
         d.levelMm = clamp(k.S - d.filt, 0, k.tankH);
         d.pct = d.levelMm / k.usableH * 100;
-      } else if (!inRange) d.invalid++;
+      }
       d.badHist.push(ok ? 0 : 1); if (d.badHist.length > 25) d.badHist.shift();
       const bad = d.badHist.reduce((a, b) => a + b, 0);
       if (d.invalid >= 5) lock('SENSOR', 'Không nhận được tiếng vọng 5 lần liên tiếp (đứt dây ECHO/TRIG?).');
@@ -147,6 +148,11 @@
       if (outL > tankL + inL) { const f = (tankL + inL) / outL; qd *= f; ql *= f; qo *= f; qs *= f; outL = tankL + inL; }
       s.level = Math.max(0, s.level + (inL - outL) * 1e6 / k.tankArea);
       s.res += (-inL + (qd + qo) / 60 * dt) * 1e6 / k.resArea;
+      // Hộp nguồn đặt ngoài khay: nước xả/tràn về quá miệng hộp thì tràn ra bàn (mất khỏi hệ)
+      const resSpill = s.res > k.resH;
+      if (resSpill) { s.added -= (s.res - k.resH) * k.resArea / 1e6; s.res = k.resH; }
+      if (resSpill && !s.resFull) ev('warn', 'Hộp nguồn đầy, nước tràn ra bàn. Rút bớt nước trong hộp nguồn.', 'lab');
+      s.resFull = resSpill;
       s.tray += (ql + qs) / 60 * dt * 1000;
       s.q = { pump: qp, drain: qd, leak: ql + qs, overflow: qo, spill: qs };
     }
@@ -171,6 +177,7 @@
 
     function reboot(why) {
       s.dev = newDev(s.dev);
+      s.dev.pumpOffAt = s.t; // relay vừa nhả do reset/mất điện → vẫn phải nghỉ đủ RELAY_MIN_OFF tính từ lúc khởi động
       s.acc.ping = s.acc.ctrl = 0;
       ev('info', `${why} — khởi động ở chế độ TỰ ĐỘNG, bơm TẮT chờ số đo hợp lệ.`);
     }
@@ -205,7 +212,7 @@
     // Thao tác trên bàn thí nghiệm (tay người, không qua mạng).
     const lab = {
       valve(v) { s.valve = clamp(v, 0, 1); },
-      addWater(L) { const cap = (s.k.resH - 5 - s.res) * s.k.resArea / 1e6; const a = clamp(L, 0, cap); s.res += a * 1e6 / s.k.resArea; s.added += a; ev('lab', `Châm ${a.toFixed(2)} L vào hộp nguồn.`, 'lab'); },
+      addWater(L) { const cap = (s.k.resH - 5 - s.res) * s.k.resArea / 1e6; const a = clamp(L, 0, Math.max(0, cap)); s.res += a * 1e6 / s.k.resArea; s.added += a; ev('lab', a > 0 ? `Châm ${a.toFixed(2)} L vào hộp nguồn.` : 'Hộp nguồn đã đầy, không châm thêm.', 'lab'); },
       emptySource() { const target = 8; if (s.res > target) { s.added -= (s.res - target) * s.k.resArea / 1e6; s.res = target; } ev('lab', 'Rút gần cạn hộp nguồn (còn 8 mm).', 'lab'); },
       dryTray() { s.added -= s.tray / 1000; s.tray = 0; ev('lab', 'Lau khô khay hứng.', 'lab'); },
       fault(key, v) {
@@ -219,12 +226,17 @@
       reset() { if (!s.faults.power) reboot('Nhấn nút RESET trên Arduino Mega'); },
     };
 
+    // Đổi kích thước trên giao diện không phải khởi động lại Mega: giữ chế độ, lệnh thủ công và khóa an toàn,
+    // chỉ quy đổi số đo cũ sang hình học mới để bộ lọc và phát hiện chạy khô không thấy một bước nhảy giả.
     function rebind(model2) {
-      const oldPct = s.level / s.k.usableH;
+      const d = s.dev, r = model2.sim.usableH / s.k.usableH;
+      s.level = clamp(s.level / s.k.usableH, 0, 1) * model2.sim.usableH;
       s.k = model2.sim;
-      s.level = clamp(oldPct, 0, 1) * s.k.usableH;
       s.res = clamp(s.res, 0, s.k.resH - 5);
-      s.dev = newDev(s.dev); s.dev.booting = 0.3; s.added = 0; s.base = totalL();
+      d.buf = []; d.filt = null; d.spikes = 0;
+      if (d.levelMm != null) d.levelMm *= r;
+      for (const e of d.riseLog.concat(d.flowLog)) if (e[1] != null) e[1] *= r;
+      s.added = 0; s.base = totalL();
     }
 
     // Nội dung LCD 16×2 (HD44780 không có dấu tiếng Việt → firmware in ASCII).
