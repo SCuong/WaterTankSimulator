@@ -36,7 +36,7 @@ Nút **Hiển thị** trên dock (mọi workspace): kiểu (Sơ đồ / 3D / Th�
 
 - **Sơ đồ** — sơ đồ đấu nối thực tế.
 - **3D** — mô hình kỹ thuật sạch (mặc định).
-- **Thực tế** — cùng mô hình đặt trên bàn gỗ trong một góc phòng lab nhỏ (cửa sổ bên trái, bảng treo dụng cụ, kệ, thảm cắt, đồng hồ vạn năng). Nắng qua cửa sổ in vệt lá cây lên bàn và mô hình, bóng đổ mềm; gỗ, tường, cảnh ngoài cửa sổ và mặt nạ vệt nắng là texture tạo bằng Codex (`js/lab-tex.js`, prompt trong `assets/ref/PROMPTS.md`); nước trong khúc xạ thước và bơm phía sau, có vạch mặt nước; thành PET/hộp nhựa chỉ phản chiếu cửa sổ; ống silicone bán trong; mạch in có chữ lụa; kính LCD phản chiếu. Mọi công cụ (tháo rời, mặt cắt — chỉ cắt mô hình, không cắt bàn —, thước đo, chọn bộ phận) vẫn hoạt động. Khi camera đứng yên, khung hình được hoàn thiện như ảnh chụp: bóng tối ở góc và dưới vật (AO), nền xa mờ, viền ảnh tối nhẹ. Máy yếu/điện thoại tự tắt khúc xạ và hậu kỳ.
+- **Thực tế** — cùng mô hình đặt trên bàn gỗ trong một góc phòng lab nhỏ (cửa sổ bên trái, bảng treo dụng cụ, kệ, thảm cắt, đồng hồ vạn năng). Nắng qua cửa sổ in vệt lá cây lên bàn và mô hình, bóng đổ mềm; gỗ, tường, cảnh ngoài cửa sổ và mặt nạ vệt nắng là texture tạo bằng Codex (`js/lab-tex.js`, prompt trong `assets/ref/PROMPTS.md`); nước trong khúc xạ thước và bơm phía sau, có vạch mặt nước; thành PET/hộp nhựa chỉ phản chiếu cửa sổ; ống silicone bán trong; mạch in có chữ lụa; kính LCD phản chiếu. Mọi công cụ (tháo rời, mặt cắt — chỉ cắt mô hình, không cắt bàn —, thước đo, chọn bộ phận) vẫn hoạt động. Máy yếu/điện thoại tự giảm chi tiết (bỏ chi tiết vi mô, độ phân giải 1×).
 - **So sánh** — mô hình Thực tế đặt cạnh ảnh ngoài đời; chọn góc ảnh thì camera 3D chuyển theo.
 
 ## Cấu trúc
@@ -47,7 +47,6 @@ Nút **Hiển thị** trên dock (mọi workspace): kiểu (Sơ đồ / 3D / Th�
 | `js/sim.js` | Vật lý nước + logic firmware Mega (lọc trung vị, hai ngưỡng, relay nghỉ ≥ 5 s, khóa an toàn, chống chạy khô, quá giờ, LCD, còi, Wi-Fi failsafe). |
 | `js/scene3d.js` | Mô hình 3D dựng từ `design.js`, đồng bộ với `sim.js`. |
 | `js/parts3d.js` | Linh kiện điện tử chi tiết theo kích thước thật (ba mức chi tiết). |
-| `js/post3d.js` | Hậu kỳ chế độ Thực tế (chất lượng cao): AO từ độ sâu, làm mờ nền (DOF), viền tối, ACES. AO/DOF chỉ bật dần khi camera đứng yên. |
 | `js/lab3d.js` | Bối cảnh phòng lab của chế độ Thực tế (bàn, tường, cửa sổ, vệt nắng, đồ trên bàn). Texture canvas dự phòng, thay bằng ảnh Codex trong `js/lab-tex.js` (tải khi bật Thực tế lần đầu). |
 | `js/drawings.js` | Bản vẽ SVG sinh từ `design.js`. |
 | `js/app.js` | Giao diện, điện thoại, hồ sơ chế tạo. |

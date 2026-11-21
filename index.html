@@ -49,6 +49,8 @@
     <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
     <symbol id="i-section" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M2.5 14l19-5" stroke-dasharray="2.5 2.5"/></symbol>
     <symbol id="i-steps" viewBox="0 0 24 24"><path d="M4 19h5v-5h5V9h5V4"/></symbol>
+    <symbol id="i-learn" viewBox="0 0 24 24"><path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v5c1.6 1.5 3.4 2.2 5.5 2.2s3.9-.7 5.5-2.2v-5M21.5 9v5"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
     <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
   </defs>
 </svg>
@@ -64,6 +66,7 @@
     <button role="tab" data-mode="build" aria-selected="false">Chế tạo</button>
   </nav>
   <div class="top-end">
+    <button class="menu-btn" id="tourBtn" aria-pressed="false" aria-label="Học nhanh" data-tip="6 bước, khoảng 3 phút: cảm biến, ngưỡng, relay, khóa an toàn"><svg class="i"><use href="#i-learn"/></svg><span>Học nhanh</span></button>
     <div class="popwrap">
       <button class="menu-btn" id="variantBtn" aria-haspopup="true" aria-expanded="false" aria-controls="popVariant" aria-label="Phương án mô hình"><svg class="i"><use href="#i-layers"/></svg><span id="variantName">Bản chi tiết</span><svg class="i i-chev"><use href="#i-chev-d"/></svg></button>
       <div class="pop pop-down pop-end" id="popVariant" hidden>
@@ -105,6 +108,36 @@
       </div>
     </div>
 
+    <!-- Dựng từ đầu: chú thích từng bước lắp trong màn mở đầu -->
+    <section class="player story sim-only" id="story" aria-label="Dựng mô hình từ đầu" hidden>
+      <div class="asm-now" id="storyCap" aria-live="polite">
+        <span class="step-k" id="storyK"></span>
+        <strong id="storyTitle"></strong>
+        <p class="tour-txt" id="storyTxt"></p>
+      </div>
+      <div class="player-row">
+        <div class="asm-prog" id="storyProg" aria-hidden="true"></div>
+        <button class="btn btn-sm btn-ghost" id="storySkip">Bỏ qua<svg class="i"><use href="#i-chev-r"/></svg></button>
+      </div>
+    </section>
+
+    <!-- Học nhanh: thẻ hướng dẫn nổi góc phải, thao tác trên chính mô phỏng (không khóa giao diện) -->
+    <section class="player tour sim-only" id="tour" aria-labelledby="tourTitle" hidden>
+      <div class="asm-now">
+        <div class="tour-head"><span class="step-k" id="tourK"></span><button class="icon-btn" id="tourExit" aria-label="Thoát học nhanh"><svg class="i"><use href="#i-x"/></svg></button></div>
+        <strong id="tourTitle" tabindex="-1"></strong>
+        <p class="tour-txt" id="tourTxt"></p>
+        <div class="tour-task" id="tourTask" aria-live="polite"></div>
+        <p class="tour-live" id="tourLive"></p>
+        <div class="asm-prog" id="tourProg" aria-hidden="true"></div>
+      </div>
+      <div class="player-row">
+        <button class="icon-btn" id="tourPrev" aria-label="Bước trước"><svg class="i"><use href="#i-chev-l"/></svg></button>
+        <button class="icon-btn" id="tourRe" aria-label="Chạy lại tình huống" data-tip="Chạy lại từ đầu" hidden><svg class="i"><use href="#i-reset"/></svg></button>
+        <button class="btn" id="tourNext"><span>Bước tiếp</span><svg class="i"><use href="#i-chev-r"/></svg></button>
+      </div>
+    </section>
+
     <!-- Dock: mọi công cụ của workspace, gom theo nhóm -->
     <div class="dock" role="toolbar" aria-label="Công cụ">
       <div class="dock-g build-only">
@@ -126,6 +159,7 @@
             <div class="pop-sec no-schem">
               <button class="tgl" id="tLabels" aria-pressed="false"><span>Bóng số bộ phận</span><i aria-hidden="true"></i></button>
               <button class="tgl" id="tDims" aria-pressed="false"><span>Kích thước chính</span><i aria-hidden="true"></i></button>
+              <button class="tgl" id="tFlow" aria-pressed="true"><span>Dòng điện &amp; tín hiệu <small>vàng: dòng bơm · xanh lơ: tín hiệu</small></span><i aria-hidden="true"></i></button>
               <button class="tgl" id="tQuality" aria-pressed="true"><span>Chi tiết cao <small>khúc xạ, chân linh kiện</small></span><i aria-hidden="true"></i></button>
             </div>
           </div>
@@ -168,6 +202,12 @@
       </div>
 
       <div class="dock-g dock-end">
+        <div class="popwrap sim-only">
+          <button class="dk" id="dScen" aria-haspopup="true" aria-expanded="false" aria-controls="popScen" aria-label="Tình huống trình bày"><svg class="i"><use href="#i-list"/></svg><span>Tình huống</span></button>
+          <div class="pop pop-end" id="popScen" hidden>
+            <div class="pop-sec"><span class="pop-h">Tình huống trình bày <small>phím 1–8</small></span><div class="opts" id="scenList" role="group" aria-label="Tình huống"></div></div>
+          </div>
+        </div>
         <button class="dk sim-only" id="dCtx" aria-pressed="false"><svg class="i"><use href="#i-panel-r"/></svg><span id="dCtxTxt">Điều khiển</span></button>
         <button class="dk sim-only" id="dPhone" aria-pressed="false" aria-label="Điện thoại" data-tip="App nhận dữ liệu qua ESP-01"><svg class="i"><use href="#i-phone"/></svg><span>Điện thoại</span></button>
         <button class="dk dk-pri build-only" id="dDoc" aria-label="Hồ sơ chế tạo"><svg class="i"><use href="#i-doc"/></svg><span>Hồ sơ</span></button>
@@ -185,6 +225,10 @@
           <input type="range" id="valve" min="0" max="100" step="5" value="0">
         </div>
         <div class="ctl-row"><span>Hộp nguồn</span><button class="btn btn-sm" id="addWater"><svg class="i"><use href="#i-plus"/></svg>0,5 L</button></div>
+      </section>
+      <section class="blk" aria-labelledby="loopH">
+        <h3 class="blk-h" id="loopH">Vòng điều khiển</h3>
+        <ol class="loop" id="loop" aria-label="Cảm biến → Mega → relay → bơm"></ol>
       </section>
       <section class="blk" aria-labelledby="hwH">
         <h3 class="blk-h" id="hwH">Phần cứng</h3>
@@ -340,7 +384,6 @@
 <script src="js/design.js?v=9"></script>
 <script src="js/sim.js"></script>
 <script src="js/lab3d.js?v=12"></script>
-<script src="js/post3d.js?v=16"></script>
 <script src="js/parts3d.js?v=13"></script>
 <script src="js/scene3d.js?v=20"></script>
 <script src="js/drawings.js"></script>

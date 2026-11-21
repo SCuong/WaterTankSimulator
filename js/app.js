@@ -85,12 +85,12 @@
   // Máy yếu / màn cảm ứng: Thực tế ở chất lượng thấp (bỏ khúc xạ, chi tiết vi mô, pixel ratio 1)
   Scene3D.setQuality(matchMedia('(pointer: coarse)').matches || innerWidth < 860 || (navigator.deviceMemory && navigator.deviceMemory <= 4) ? 'low' : 'high');
   $('#tQuality').setAttribute('aria-pressed', Scene3D.getQuality() === 'high');
-  Scene3D.onQuality((q) => { $('#tQuality').setAttribute('aria-pressed', q === 'high'); hint('Máy chạy chậm: đã tắt khúc xạ và hậu kỳ (Hiển thị › Chi tiết cao để bật lại).'); });
+  Scene3D.onQuality((q) => { $('#tQuality').setAttribute('aria-pressed', q === 'high'); hint('Máy chạy chậm: đã giảm chi tiết hiển thị (Hiển thị › Chi tiết cao để bật lại).'); });
   $('#tQuality').addEventListener('click', (e) => { const hi = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', hi); Scene3D.setQuality(hi ? 'high' : 'low'); });
   Scene3D.build(model);
   let uiAcc = 0, chartAcc = 0;
   Scene3D.onFrame((dt) => {
-    if (speed > 0) sim.step(dt * speed);
+    if (speed > 0 && (!storyOn || storyLive)) sim.step(dt * speed); // đang dựng thì mô phỏng chờ tới bước "chạy thử"
     Scene3D.sync(sim, dt);
     uiAcc += dt; chartAcc += dt;
     if (uiAcc > 0.12) { uiAcc = 0; renderLive(); }
@@ -173,6 +173,7 @@
   $$('#lookSeg button').forEach((b) => b.addEventListener('click', () => setLook(b.dataset.look)));
   function setLook(l) {
     pressOnly('#lookSeg', $(`#lookSeg [data-look="${l}"]`)); $('#app').dataset.look = l;
+    if (l === 'cad' || l === 'real') store.set('look', l); // mở lại app vẫn giữ kiểu xem 3D / Thực tế đã chọn
     $('#schem').hidden = l !== 'schem';
     if (l === 'schem') $('#schem').innerHTML = `<figure><figcaption>Sơ đồ đấu nối thực tế <small>+5V, +3V3, GND cùng tên = cùng nút</small></figcaption>${Drawings.wiring()}</figure>`;
     if (l === 'schem' && $('#tMeasure').getAttribute('aria-pressed') === 'true') $('#tMeasure').click();
@@ -201,26 +202,30 @@
     $$('#d-real [data-cmp]').forEach((b) => b.addEventListener('click', () => { shotId = b.dataset.cmp; setDoc(false); setLook('compare'); }));
   }
   toggle('#tLabels', (on) => Scene3D.setLabels(on));
+  toggle('#tFlow', (on) => Scene3D.setFlow(on));
   toggle('#tDims', (on) => { Scene3D.setDims(on); if (on && Scene3D.getExplode().cur > 0.01) hint('Kích thước hiện khi mô hình đã lắp hoàn chỉnh.'); });
   toggle('#tMeasure', (on) => { Scene3D.setMeasure(on); $('#stageHint').hidden = !on; if (on) $('#stageHint').textContent = 'Thước đo: bấm 2 điểm bất kỳ trên mô hình (khoảng cách thẳng, mm)'; });
   // Esc lùi từng lớp: popover → thước đo → bộ phận đang chọn
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || lb.open || (e.target.closest && e.target.closest('.dd'))) return;
+    if (storyOn) { storyEnd(false); return; }
     const pop = $('[aria-controls^="pop"][aria-expanded="true"]');
     if (pop) { closePops(); pop.focus(); }
     else if ($('#tMeasure').getAttribute('aria-pressed') === 'true') $('#tMeasure').click();
+    else if (tourI >= 0) { tourEnd(); $('#tourBtn').focus(); }
     else if (mode === 'build' && selected) showPart(null);
   });
 
   function toggle(sel, fn) { const b = $(sel); b.addEventListener('click', () => { const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', on); fn(on); }); }
   function pressOnly(group, btn) { $$(group + ' button').forEach((x) => x.setAttribute('aria-pressed', x === btn)); }
   let hintT = 0;
-  function hint(t) { const h = $('#stageHint'); h.hidden = false; h.textContent = t; clearTimeout(hintT); hintT = setTimeout(() => { if ($('#tMeasure').getAttribute('aria-pressed') !== 'true') h.hidden = true; }, 3500); }
+  function hint(t, ms) { const h = $('#stageHint'); h.hidden = false; h.textContent = t; clearTimeout(hintT); hintT = setTimeout(() => { if ($('#tMeasure').getAttribute('aria-pressed') !== 'true') h.hidden = true; }, ms || 3500); }
 
   // ================= Chế độ =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
   function setMode(m) {
-    if (m !== 'build') setDoc(false);
+    if (storyOn) storyEnd(false);
+    if (m !== 'build') setDoc(false); else if (tourI >= 0) tourEnd();
     mode = m;
     $('#app').dataset.mode = m;
     $$('.tabs button').forEach((b) => { b.setAttribute('aria-selected', b.dataset.mode === m); b.tabIndex = b.dataset.mode === m ? 0 : -1; });
@@ -309,14 +314,206 @@
         ['Water Sensor · A0', pw ? String(d.wsAdc) : '—', d.wsAdc > Sim.WS_WET ? 'bad' : '', `ướt > ${Sim.WS_WET}`],
         ['ESP-01', !pw ? 'Mất điện' : sim.faults.wifi ? 'Mất Wi-Fi' : 'Kết nối', !pw || sim.faults.wifi ? 'warn' : 'on', ''],
       ].map(([k, v, c, sub]) => `<div><span>${k}</span><b class="${c}">${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div>`).join('');
+      // Vòng điều khiển: cảm biến → quyết định → chấp hành → kết quả; ô nào đang dẫn thì sáng, ô gây khóa thì đỏ
+      const q = sim.q.pump, on = pw && d.booting <= 0, lk = d.lock && d.lock.code;
+      const loopHtml = [
+        ['HC-SR04', on && d.filt != null ? [nf(d.filt), 'mm'] : '—', lk === 'SENSOR' ? 'bad' : on && d.filt != null ? 'on' : '', 'Khoảng cách mặt cảm biến → mặt nước, sau lọc trung vị 5 mẫu'],
+        ['Mega', on && d.pct != null ? [nf(d.pct), '%'] : '—', lk ? 'bad' : on ? 'on' : '', d.mode === 'auto' ? `Tự động: bật ≤ ${d.low} %, tắt ≥ ${d.high} %` : `Thủ công: theo lệnh app, chặn ở ${Sim.HARD_MAX} %`],
+        ['Relay D6', on ? (d.pump ? 'Đóng' : 'Mở') : '—', on && d.pump ? 'on' : '', 'D6 mức cao → cuộn relay hút → tiếp điểm NO nối 5 V vào bơm'],
+        ['Bơm', !on || !d.pump ? (on ? 'Dừng' : '—') : q > 0.01 || sim.t - d.pumpOnAt < 1 ? [nf(q, 2), 'L/ph'] : 'Khô', on && d.pump ? (q > 0.01 || sim.t - d.pumpOnAt < 1 ? 'on' : 'warn') : '', 'Lưu lượng thật (lít/phút), giảm khi cột áp cao; "Khô" = relay đóng mà hộp nguồn hết nước'],
+      ].map(([k, v, c, t]) => `<li class="${c}" data-tip="${esc(t)}" tabindex="0"><span>${k}</span><b>${Array.isArray(v) ? `${esc(v[0])}<small>${v[1]}</small>` : esc(v)}</b></li>`).join('');
+      const lp = $('#loop'); if (lp.dataset.h !== loopHtml) { lp.innerHTML = loopHtml; lp.dataset.h = loopHtml; }
       const logHtml = sim.events.filter((e) => e.src === 'lab').slice(-12).reverse().map((e) => `<li><span>${Sim.fmtClock(e.t)}</span><span>${esc(e.msg)}</span></li>`).join('') || '<li class="empty">Chưa có thao tác.</li>';
       const lg = $('#labLog'); if (lg.dataset.h !== logHtml) { lg.innerHTML = logHtml; lg.dataset.h = logHtml; }
       // đồng bộ công tắc nếu trạng thái đổi từ nơi khác
       $('#fLeak').checked = F.leak; $('#fWeak').checked = F.weak; $('#fWifi').checked = F.wifi; $('#fPower').checked = F.power;
       if ($('#fSensor').value !== F.sensor) { $('#fSensor').value = F.sensor; $('#fSensor')._sync(); }
       renderPhone(conn);
+      renderTour();
     }
   }
+
+  // ================= Học nhanh =================
+  // Mỗi bước: workspace, góc nhìn, panel cần mở, một việc tự làm trên chính mô phỏng (kiểm tra bằng trạng thái thật) và nút "Làm giúp"
+  const setValve = (v) => { const el = $('#valve'); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+  const fast = () => $('#speedSeg [data-speed="20"]').click();
+  const TOUR = [
+    { mode: 'run', view: 'tank', title: 'Đo mực nước bằng siêu âm',
+      text: 'HC-SR04 phát xung siêu âm xuống mặt nước (TRIG, xung xanh lơ) rồi chờ tiếng vọng quay về (ECHO). Mega đổi thời gian bay thành khoảng cách, rồi thành mực nước.',
+      live: (d) => (d.echoUs ? `Tiếng vọng ${nf(d.echoUs)} µs → ${nf(d.filt)} mm tới mặt nước → mức ${nf(d.pct)} %` : 'Chưa nhận được tiếng vọng.') },
+    { mode: 'run', view: 'iso', ctx: true, target: '#speedSeg', title: 'Ngưỡng bật và tắt bơm',
+      text: (d) => `Ở chế độ tự động, bơm bật khi mức ≤ ${d.low} % (vạch cam) và tắt khi ≥ ${d.high} % (vạch xanh lá). Khoảng giữa hai ngưỡng giúp relay không đóng cắt liên tục.`,
+      task: 'Bấm 20× để tua nhanh và chờ bơm tự tắt khi nước chạm vạch xanh lá.', done: () => sim.events.some((e) => e.t >= tourT0 && /^Tắt bơm — mức ≥/.test(e.msg)), help: fast,
+      live: (d) => `Mức ${nf(d.pct)} % · bơm ${d.pump ? `đang chạy, còn ${nf(Math.max(0, d.high - d.pct))} % tới vạch xanh` : 'tắt'}` },
+    { mode: 'run', view: 'control', ctx: true, target: '#valve', title: 'Relay đóng mạch bơm',
+      text: 'Khi cần bơm, Mega đưa chân D6 lên mức cao (sọc xanh lơ). Cuộn relay hút, tiếp điểm NO đóng, dòng 5 V chạy qua bơm rồi về GND (sọc vàng).',
+      task: 'Kéo van xả lên 60 % để nước tụt tới vạch cam, rồi xem relay đóng và dòng điện chạy.', done: (d) => d.pump, help: () => { setValve(60); fast(); },
+      live: (d) => `Relay ${d.pump ? 'đóng' : 'mở'} · đã đóng ${d.relayCycles} lần · nghỉ ít nhất ${Sim.RELAY_MIN_OFF} s giữa hai lần` },
+    { mode: 'lab', view: 'tank', ctx: true, target: '#fLeak', title: 'Khóa an toàn khi rò rỉ',
+      text: 'Water Sensor nằm trong khay hứng dưới bình. Có nước trong khay là firmware tắt bơm và khóa lại, kể cả ở chế độ thủ công.',
+      task: 'Bật sự cố "Rò rỉ bình chứa" và chờ bơm bị khóa.', done: (d) => d.lock && d.lock.code === 'LEAK', help: () => { sim.lab.fault('leak', true); fast(); },
+      live: (d) => `Water Sensor A0 = ${d.wsAdc} (ướt khi > ${Sim.WS_WET})` },
+    { mode: 'lab', view: 'tank', ctx: true, target: '#dryTray', title: 'Mở khóa đúng quy trình',
+      text: 'Khóa không tự mở khi hết nước. Phải sửa nguyên nhân, lau khô khay, rồi xác nhận bằng RESET.',
+      task: 'Tắt "Rò rỉ bình chứa", bấm Lau khô, rồi RESET Mega.', done: (d) => !d.lock && !sim.faults.leak && sim.tray < 0.05,
+      help: () => { sim.lab.fault('leak', false); sim.lab.dryTray(); sim.lab.reset(); },
+      live: (d) => (d.lock ? `Đang khóa: ${d.lock.msg}` : sim.tray >= 0.05 ? `Khay còn ${nf(sim.tray, 1)} mL nước` : 'Không còn khóa an toàn.') },
+    { mode: 'lab', view: 'iso', ctx: true, phone: true, target: '#fWifi', title: 'App điện thoại khi mất Wi-Fi',
+      text: 'ESP-01 nhận số đo từ Mega qua UART rồi gửi lên app. Mất Wi-Fi thì app chỉ còn dữ liệu cũ, còn Mega vẫn tự điều khiển bơm tại chỗ.',
+      task: 'Bật "Mất Wi-Fi" và xem điện thoại báo mất kết nối.', done: () => sim.faults.wifi, help: () => sim.lab.fault('wifi', true),
+      live: () => (sim.connected() ? 'App: trực tuyến' : `App: mất kết nối, dữ liệu cuối lúc ${snap ? Sim.fmtClock(snap.t) : '—'}`) },
+  ];
+  // ================= Tình huống trình bày =================
+  // Mỗi tình huống dựng lại mô phỏng từ đầu (sự cố tắt, Mega vừa khởi động, mực nước/van/hộp nguồn đặt sẵn), rồi gây sự cố đúng thời điểm (at: giây mô phỏng).
+  // Dùng chung thẻ hướng dẫn với Học nhanh: lời giải thích, kết quả mong đợi (✓ khi xảy ra thật), số đo trực tiếp.
+  function freshRun(o) {
+    ['leak', 'wifi', 'power', 'weak'].forEach((k) => sim.lab.fault(k, false)); sim.lab.fault('sensor', 'ok');
+    sim.lab.reset(); sim.dev.booting = 0; sim.dev.pumpOffAt = -1e9; // Mega sẵn sàng ngay, relay không phải chờ nghỉ
+    sim.tray = 0; sim.level = o.level / 100 * sim.k.usableH; sim.res = o.res != null ? o.res : Math.min(sim.k.resH - 25, 85);
+    sim.added = 0; sim.base = sim.totalL(); sim.history.length = 0; setValve(o.valve || 0);
+    if (o.manual) { sim.cmd('mode', 'manual'); sim.cmd('pump', true); }
+  }
+  const lockIs = (code) => (d) => !!d.lock && d.lock.code === code;
+  const saw = (re) => () => sim.events.some((e) => e.t >= tourT0 && re.test(e.msg));
+  const lockTxt = (d) => (d.lock ? `Khóa: ${d.lock.msg}` : 'Chưa khóa');
+  const SCEN = [
+    { title: 'Tự động bật/tắt theo ngưỡng', sub: 'Vòng làm việc bình thường của bể', mode: 'run', view: 'iso', ctx: true, phone: true, speed: 5,
+      setup: () => freshRun({ level: 31, valve: 40 }),
+      text: (d) => `Van tiêu thụ mở 40 %. Nước tụt tới ${d.low} % thì Mega bật bơm, đầy tới ${d.high} % thì tắt, rồi lặp lại như một bể nước thật.`,
+      task: 'Kết quả mong đợi: bơm tự tắt khi nước chạm vạch xanh lá.', done: saw(/^Tắt bơm — mức ≥/),
+      live: (d) => `Mức ${nf(d.pct)} % · bơm ${d.pump ? 'chạy' : 'tắt'} · relay đã đóng ${d.relayCycles} lần` },
+    { title: 'Rò rỉ bình chứa', sub: 'Water Sensor ướt → khóa bơm, còi kêu', mode: 'lab', view: 'tank', ctx: true, target: '#fLeak', speed: 5,
+      setup: () => freshRun({ level: 45, valve: 20 }), at: [[3, () => sim.lab.fault('leak', true)]],
+      text: 'Sau 3 giây, bình chứa bắt đầu rò xuống khay hứng. Water Sensor trong khay báo ướt, firmware tắt bơm, khóa lại và kêu còi, kể cả khi đang thủ công.',
+      task: 'Kết quả mong đợi: khóa "Rò rỉ", còi báo động.', done: lockIs('LEAK'),
+      live: (d) => `Water Sensor A0 = ${d.wsAdc} (ướt khi > ${Sim.WS_WET}) · ${lockTxt(d)}` },
+    { title: 'Đứt dây ECHO của HC-SR04', sub: 'Không có tiếng vọng → khóa sau ~1 s', mode: 'lab', view: 'tank', ctx: true, speed: 1,
+      setup: () => freshRun({ level: 50 }), at: [[3, () => sim.lab.fault('sensor', 'timeout')]],
+      text: 'Sau 3 giây, dây ECHO bị đứt: xung TRIG vẫn phát nhưng không có tiếng vọng quay về. Sau 5 lần đo hỏng liên tiếp (khoảng 1 giây), firmware khóa bơm.',
+      task: 'Kết quả mong đợi: khóa "Cảm biến HC-SR04 lỗi".', done: lockIs('SENSOR'),
+      live: (d) => `Tiếng vọng ${d.echoUs ? nf(d.echoUs) + ' µs' : 'không có'} · ${lockTxt(d)}` },
+    { title: 'Hộp nguồn cạn: chạy khô', sub: 'Bơm chạy mà mức không tăng → khóa', mode: 'lab', view: 'pump', ctx: true, speed: 5,
+      setup: () => freshRun({ level: 26, res: 8 }),
+      text: 'Hộp nguồn gần cạn. Mức nước dưới ngưỡng nên Mega bật bơm, nhưng bơm không hút được nước: sau 20 giây mức không tăng, firmware khóa để bơm khỏi cháy.',
+      task: 'Kết quả mong đợi: khóa "Bơm chạy nhưng mực nước không tăng".', done: lockIs('DRY'),
+      live: (d) => `Bơm ${nf(sim.q.pump, 2)} L/phút · mức ${nf(d.pct)} % · ${lockTxt(d)}` },
+    { title: 'Bơm yếu / tắc ống: quá giờ', sub: 'Chạy quá thời gian cho phép → khóa', mode: 'lab', view: 'pump', ctx: true, target: '#fWeak', speed: 20,
+      setup: () => { freshRun({ level: 20 }); sim.lab.fault('weak', true); },
+      text: () => `Ống tắc một phần, bơm chỉ còn 30 % lưu lượng. Mức vẫn tăng chậm nên không phải chạy khô, nhưng chạy liên tục quá ${sim.k.maxRun} s thì firmware khóa.`,
+      task: 'Kết quả mong đợi: khóa "Bơm chạy quá thời gian cho phép".', done: lockIs('TIMEOUT'),
+      live: (d) => (d.pump ? `Bơm đã chạy ${nf(sim.t - d.pumpOnAt)} / ${sim.k.maxRun} s` : lockTxt(d)) },
+    { title: 'Mất Wi-Fi khi đang thủ công', sub: 'Quá 15 s → Mega tự về tự động', mode: 'lab', view: 'iso', ctx: true, phone: true, target: '#fWifi', speed: 1,
+      setup: () => freshRun({ level: 50, manual: true }), at: [[3, () => sim.lab.fault('wifi', true)]],
+      text: 'App đang giữ bơm chạy bằng lệnh thủ công. Sau 3 giây mất Wi-Fi nên app không gửi được lệnh tắt. Quá 15 giây không có kết nối, Mega tự về TỰ ĐỘNG để không bơm vô thời hạn.',
+      task: 'Kết quả mong đợi: Mega chuyển về TỰ ĐỘNG, app báo mất kết nối.', done: (d) => sim.faults.wifi && d.mode === 'auto',
+      live: (d) => `Chế độ ${d.mode === 'auto' ? 'tự động' : 'thủ công'} · ${d.wifiLostAt == null ? 'có Wi-Fi' : `mất Wi-Fi ${nf(sim.t - d.wifiLostAt)} s`}` },
+    { title: 'Mất điện rồi có điện lại', sub: 'Relay nhả; khởi động lại an toàn', mode: 'run', view: 'iso', ctx: true, speed: 1,
+      setup: () => freshRun({ level: 25, valve: 30 }), at: [[4, () => sim.lab.fault('power', true)], [10, () => sim.lab.fault('power', false)]],
+      text: `Bơm đang chạy thì mất điện 6 giây: relay nhả, bơm tắt. Có điện lại, Mega khởi động ở TỰ ĐỘNG và chờ relay nghỉ đủ ${Sim.RELAY_MIN_OFF} s mới bật bơm lại.`,
+      task: 'Kết quả mong đợi: có điện lại, bơm tự chạy tiếp.', done: (d) => saw(/^Có điện trở lại/)() && d.pump,
+      live: (d) => (sim.faults.power ? 'Mất điện: relay nhả, bơm tắt' : d.booting > 0 ? 'Mega đang khởi động' : d.holdOff > 0 ? `Relay nghỉ thêm ${Math.ceil(d.holdOff)} s` : `Bơm ${d.pump ? 'chạy' : 'tắt'}`) },
+    { title: 'Thủ công chạm giới hạn cứng', sub: `App không tắt, firmware tự ngắt ở ${Sim.HARD_MAX} %`, mode: 'run', view: 'tank', phone: true, speed: 5,
+      setup: () => freshRun({ level: 88, manual: true }),
+      text: `Người dùng bật bơm thủ công rồi quên tắt. Dù app vẫn ra lệnh bơm, firmware tự ngắt khi mức chạm ${Sim.HARD_MAX} % để nước không tràn.`,
+      task: `Kết quả mong đợi: bơm tự tắt ở ${Sim.HARD_MAX} %.`, done: saw(/Chạm giới hạn cứng/),
+      live: (d) => `Mức ${nf(d.pct)} % · bơm ${d.pump ? 'chạy' : 'tắt'} · chế độ thủ công` },
+  ];
+
+  let tourI = -1, tourEl = null, tourT0 = 0, guide = TOUR, fired = new Set();
+  function tourGo(i) {
+    if (tourEl) tourEl.classList.remove('tour-target'); tourEl = null;
+    if (i >= guide.length) return tourEnd(true);
+    if (storyOn) storyEnd(false);
+    const st = guide[i], opening = tourI < 0, scen = guide === SCEN; tourI = i; fired = new Set();
+    closePops();
+    if (st.setup) st.setup();
+    tourT0 = sim.t;
+    if (st.speed) $(`#speedSeg [data-speed="${st.speed}"]`).click();
+    if (mode !== st.mode) setMode(st.mode);
+    // Cả panel lẫn điện thoại chỉ khi màn đủ rộng (≥ 1600 px); màn vừa mở một bên (điện thoại ưu tiên khi bước cần) để 3D không bị ép còn một nửa
+    const both = innerWidth >= 1600, wantCtx = st.ctx && (both || !st.phone), wantPhone = st.phone && !narrow.matches;
+    if (!both && wantPhone && ui.ctx[mode]) openPane('ctx', false);
+    if (!both && wantCtx && ui.phone) openPane('phone', false);
+    if (wantCtx && !ui.ctx[mode]) openPane('ctx', true);
+    if (wantPhone && !ui.phone) openPane('phone', true);
+    Scene3D.setInset(true);
+    if (st.mode === 'lab') $('#lt-f').click();
+    setViewSel(st.view); // đợi 2 khung: panel vừa mở/đóng làm đổi tỉ lệ khung 3D, tính góc nhìn sau khi ResizeObserver cập nhật camera
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (guide[tourI] === st) Scene3D.view(st.view); }));
+    $('#tour').hidden = false; $('#app').dataset.tour = 1; $('#tourBtn').setAttribute('aria-pressed', String(!scen)); $('#tourRe').hidden = !scen;
+    $('#tourK').textContent = `${scen ? 'Tình huống' : 'Bước'} ${i + 1} / ${guide.length}`;
+    $('#tourTitle').textContent = st.title;
+    $('#tourTxt').textContent = typeof st.text === 'function' ? st.text(sim.dev) : st.text;
+    $('#tourProg').innerHTML = guide.map((_, k) => `<i class="${k <= i ? 'done' : ''}"></i>`).join('');
+    $('#tourPrev').disabled = i === 0;
+    $('#tourNext span').textContent = i === guide.length - 1 ? 'Hoàn thành' : scen ? 'Tình huống tiếp' : 'Bước tiếp';
+    tourEl = st.target && $(st.target);
+    if (tourEl) { tourEl = tourEl.closest('.sw-row, .ctl-row, .field') || tourEl; tourEl.classList.add('tour-target'); tourEl.scrollIntoView({ block: 'nearest' }); }
+    $('#tourTask').dataset.h = ''; renderTour();
+    if (opening) $('#tourTitle').focus({ preventScroll: true });
+  }
+  function tourEnd(finished) {
+    if (tourEl) tourEl.classList.remove('tour-target'); tourEl = null; tourI = -1;
+    $('#tour').hidden = true; delete $('#app').dataset.tour; Scene3D.setInset(false); $('#tourBtn').setAttribute('aria-pressed', 'false');
+    if (finished) hint(guide === SCEN ? 'Đã trình bày hết các tình huống.' : 'Xong! Thử tiếp trong Thí nghiệm: cảm biến nhiễu, bơm yếu, mất điện.', 6000);
+  }
+  function renderTour() {
+    if (tourI < 0) return;
+    const st = guide[tourI], d = sim.dev, ok = st.done ? !!st.done(d) : null;
+    (st.at || []).forEach(([sec, fn], j) => { if (!fired.has(j) && sim.t - tourT0 >= sec) { fired.add(j); fn(); } }); // sự cố theo kịch bản
+    const html = st.task ? `<span class="tour-check${ok ? ' ok' : ''}" aria-hidden="true">${ok ? icon('check') : ''}</span><span>${ok ? '<span class="sr-only">Đã xong: </span>' : ''}${esc(st.task)}</span>${ok || !st.help ? '' : '<button class="btn btn-sm btn-ghost" data-tour-help>Làm giúp</button>'}` : '';
+    const tk = $('#tourTask'); tk.hidden = !st.task; if (tk.dataset.h !== html) { tk.innerHTML = html; tk.dataset.h = html; }
+    $('#tourLive').textContent = st.live ? st.live(d) : '';
+    $('#tourNext').classList.toggle('btn-pri', !st.task || ok);
+  }
+  $('#tourBtn').addEventListener('click', () => { const was = tourI >= 0 && guide === TOUR; if (tourI >= 0) tourEnd(); if (!was) { guide = TOUR; tourGo(0); } });
+  const scenGo = (i) => { if (tourI >= 0) tourEnd(); guide = SCEN; tourGo(i); };
+  $('#scenList').innerHTML = SCEN.map((x, i) => `<button class="opt scen" data-scen="${i}"><span class="scen-no">${i + 1}</span><span><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span></button>`).join('');
+  $$('#scenList [data-scen]').forEach((b) => b.addEventListener('click', () => scenGo(+b.dataset.scen)));
+  $('#tourRe').addEventListener('click', () => tourGo(tourI));
+  // Phím 1–8: gọi nhanh tình huống khi đang trình bày (bỏ qua khi đang gõ vào ô nhập)
+  document.addEventListener('keydown', (e) => {
+    if (!/^[1-9]$/.test(e.key) || e.ctrlKey || e.metaKey || e.altKey || (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) || lb.open) return;
+    const i = +e.key - 1; if (SCEN[i]) { e.preventDefault(); scenGo(i); }
+  });
+  $('#tourExit').addEventListener('click', () => { tourEnd(); $('#tourBtn').focus(); });
+  $('#tourPrev').addEventListener('click', () => tourGo(Math.max(0, tourI - 1)));
+  $('#tourNext').addEventListener('click', () => tourGo(tourI + 1));
+  $('#tourTask').addEventListener('click', (e) => { if (e.target.closest('[data-tour-help]')) guide[tourI].help(); });
+
+  // ================= Dựng từ đầu (màn mở đầu) =================
+  // Bàn trống → từng bước lắp của Hồ sơ (model.steps) hiện chú thích, camera tới chỗ đang lắp, bộ phận của bước đó bay vào và phát sáng.
+  // Bước cuối "Nạp code… chạy thử" mới cho mô phỏng chạy: Mega khởi động, rồi bơm bật. Bỏ qua một lần → các lần sau dùng màn ngắn.
+  let storyOn = false, storyLive = false, storyT = 0;
+  function storyCap(k, title, txt, i) {
+    $('#storyK').textContent = k; $('#storyTitle').textContent = title; $('#storyTxt').textContent = txt;
+    $('#storyProg').innerHTML = model.steps.map((_, j) => `<i class="${j <= i ? 'done' : ''}"></i>`).join('');
+    const c = $('#storyCap'); c.classList.remove('cap-in'); void c.offsetWidth; c.classList.add('cap-in'); // chạy lại hiệu ứng chữ mỗi bước
+  }
+  function storyPlay() {
+    storyOn = true; storyLive = false; $('#app').dataset.story = 1; $('#story').hidden = false;
+    Scene3D.setAssembly(-1, true); Scene3D.view('iso', true); setViewSel('iso');
+    storyCap('Bắt đầu', 'Dựng mô hình từ đầu', `${model.variantName} · ${model.steps.length} bước, đúng như hướng dẫn trong Hồ sơ`, -1);
+    let i = -1;
+    const next = () => {
+      i++;
+      if (i >= model.steps.length) return storyEnd(true);
+      const st = model.steps[i], n = st.parts.length;
+      Scene3D.setAssembly(i, true); Scene3D.storyStep(i); storyCap(`Bước ${i + 1} / ${model.steps.length}`, st.title, st.text[0], i);
+      if (!n) storyLive = true; // bước chạy thử: Mega bắt đầu khởi động
+      storyT = setTimeout(next, n ? 750 * (1 + 0.2 * (n - 1)) + 450 : 2200);
+    };
+    storyT = setTimeout(next, 1100);
+  }
+  function storyEnd(watched) {
+    clearTimeout(storyT); if (!storyOn) return; storyOn = false; storyLive = false;
+    Scene3D.storyStep(null); Scene3D.setAssembly(null); $('#story').hidden = true; delete $('#app').dataset.story;
+    if (!watched) store.set('storySkip', 1);
+    if (mode !== 'build') { Scene3D.view('front'); setViewSel('front'); }
+    tourNudge(watched ? 600 : 0);
+  }
+  function tourNudge(ms) { if (!store.get('tourSeen')) { store.set('tourSeen', 1); setTimeout(() => { if (tourI < 0) hint('Mới dùng? Bấm "Học nhanh" ở góc trên bên phải: 6 bước, khoảng 3 phút.', 7000); }, ms); } }
+  $('#storySkip').addEventListener('click', () => storyEnd(false));
 
   // ================= Điện thoại =================
   $$('#pMode button').forEach((b) => b.addEventListener('click', () => send('mode', b.dataset.pmode)));
@@ -388,6 +585,11 @@
     c.setLineDash([4, 3]);
     [[d.low, '#dc6803'], [d.high, '#12b76a']].forEach(([p, col]) => { c.strokeStyle = col; c.beginPath(); c.moveTo(padL, Yv(p)); c.lineTo(w, Yv(p)); c.stroke(); });
     c.setLineDash([]);
+    // Vùng nước dưới đường mức: đọc nhanh "bình đầy hay vơi"; ngắt ở đoạn mất kết nối như đường mức
+    c.fillStyle = 'rgba(11, 114, 231, .1)';
+    let run = [];
+    const flush = () => { if (run.length > 1) { c.beginPath(); c.moveTo(X(run[0]), bot); run.forEach((i) => c.lineTo(X(i), Yv(H[i].pct))); c.lineTo(X(run[run.length - 1]), bot); c.fill(); } run = []; };
+    H.forEach((e, i) => { if (e.pct == null) flush(); else run.push(i); }); flush();
     c.fillStyle = '#a6ef67';
     H.forEach((e, i) => { if (e.pump && e.pct != null) c.fillRect(X(i), bot - 5, (w - padL) / span + 0.6, 5); });
     c.strokeStyle = '#0b72e7'; c.lineWidth = 2; c.lineJoin = 'round'; c.beginPath();
@@ -544,6 +746,7 @@
   }
   $('#resetParams').addEventListener('click', () => { params = Design.defaults(); store.set('params', params); renderParams(); rebuild(); });
   function rebuild() {
+    if (storyOn) storyEnd(false);
     model = Design.compute(params, variant);
     sim.rebind(model);
     Scene3D.build(model);
@@ -725,4 +928,15 @@
   renderDoc();
   showPart(null);
   setMode('run');
+  // Mở đầu: lần đầu trên máy đủ mạnh mở ở Thực tế; mực nước ngay dưới ngưỡng bật và van tiêu thụ mở sẵn
+  // → mô hình vừa lắp xong là bơm tự bật, thấy ngay nước đổ vào bình và dòng điện chạy trên dây.
+  if (store.get('look', Scene3D.getQuality() === 'high' && wide ? 'real' : 'cad') === 'real') setLook('real');
+  sim.level = Math.max(0, sim.dev.low - 0.5) / 100 * sim.k.usableH; sim.base = sim.totalL(); setValve(30);
+  // Lần đầu (hoặc chưa từng bấm Bỏ qua): màn dựng từ đầu. Đã bỏ qua: màn lắp nhanh ~3,5 s. Giảm chuyển động: vào thẳng góc trước.
+  if (!store.get('storySkip') && !matchMedia('(prefers-reduced-motion: reduce)').matches) storyPlay();
+  else {
+    const introS = Scene3D.intro('front'); setViewSel('front');
+    sim.dev.booting = Math.max(sim.dev.booting, introS + 0.6); // Mega khởi động trong lúc mô hình đang lắp → lắp xong mới bật bơm
+    tourNudge(introS * 1000 + 800);
+  }
 })();

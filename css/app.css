@@ -345,6 +345,60 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .asm-prog i { flex: 1; height: 3px; border-radius: 2px; background: var(--line); transition: background .2s; }
 .asm-prog i.done { background: var(--accent); }
 
+/* ---------- Dựng từ đầu: chú thích bước lắp trong màn mở đầu ---------- */
+.story { width: min(440px, calc(100% - 24px)); }
+.story .player-row { gap: var(--s3); padding-left: var(--s4); }
+.story .asm-prog { flex: 1; margin: 0; }
+.app[data-story] .fw { display: none; } /* chưa có mạch thì chưa có trạng thái firmware */
+.cap-in > * { animation: cap-in .34s cubic-bezier(.16, 1, .3, 1); }
+.cap-in > :nth-child(3) { animation-duration: .44s; }
+@keyframes cap-in { from { opacity: .35; transform: translateY(6px); } } /* chữ luôn đọc được kể cả khi hiệu ứng không chạy */
+
+/* ---------- Tình huống trình bày: danh sách đánh số kiểu bóng số CAD ---------- */
+#popScen { width: 320px; padding: var(--s2); }
+#popScen .pop-h { padding: 2px 10px 4px; } #popScen .pop-h small { margin-left: 4px; font-weight: 500; }
+.opt.scen { justify-content: flex-start; min-height: 44px; }
+.scen-no { flex: none; display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px solid var(--text); border-radius: var(--r-pill); background: var(--surface); font-size: var(--fs-xs); font-weight: 700; transition: border-color .12s, color .12s; }
+.opt.scen:hover .scen-no, .opt.scen:focus-visible .scen-no { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Học nhanh: thẻ nổi góc phải, cùng ngữ pháp với trình phát lắp ráp ---------- */
+.tour { left: auto; right: var(--s3); translate: none; width: min(360px, calc(100% - 24px)); }
+.tour-head { display: flex; align-items: center; justify-content: space-between; margin: -6px -8px 0 0; }
+.tour-head .icon-btn { width: 28px; height: 28px; }
+#tourTitle:focus { outline: none; }
+.tour-txt { margin: 0; font-size: var(--fs-sm); color: var(--text-2); }
+.tour-task { display: flex; align-items: flex-start; gap: var(--s2); margin-top: var(--s3); padding: 10px var(--s3); border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); font-size: var(--fs-sm); font-weight: 500; }
+.tour-task > span:nth-child(2) { flex: 1; }
+.tour-task .btn { margin: -5px -6px -5px 0; }
+.tour-check { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: 1px; border: 1.5px solid var(--line-2); border-radius: 50%; background: var(--surface); color: #fff; transition: background .18s var(--ease), border-color .18s var(--ease); }
+.tour-check.ok { border-color: var(--ok-fill); background: var(--ok-fill); }
+.tour-check .i { width: 12px; height: 12px; stroke-width: 2.5; }
+.tour-live { margin: var(--s2) 0 0; font-size: var(--fs-xs); color: var(--text-3); }
+.tour #tourNext { flex: 1; min-height: 34px; }
+@container (max-width: 720px) { .tour { top: 72px; left: var(--s3); right: var(--s3); width: auto; } } /* stage hẹp: xuống dưới thẻ trạng thái firmware */
+/* Điều khiển đang được hướng dẫn: viền nhấn cách 6 px, nhịp nhẹ hai lần rồi đứng yên */
+.tour-target { border-radius: var(--r); box-shadow: 0 0 0 6px var(--surface), 0 0 0 8px var(--accent); animation: tour-ring 1.1s var(--ease) 2; }
+@keyframes tour-ring { 50% { box-shadow: 0 0 0 6px var(--surface), 0 0 0 8px var(--accent), 0 0 0 13px rgba(37, 99, 235, .14); } }
+.menu-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.menu-btn[aria-pressed="true"] > .i:first-child { color: var(--accent); }
+
+/* ---------- Vòng điều khiển: cảm biến → Mega → relay → bơm ---------- */
+.loop { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, auto); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); }
+.loop li { position: relative; display: grid; gap: 1px; min-width: 0; padding: 8px 4px 8px 9px; background: var(--surface); font-size: var(--fs-xs); color: var(--text-3); transition: background .18s var(--ease); }
+.loop li > span { white-space: nowrap; }
+.loop b small { margin-left: 2px; font-size: var(--fs-xs); font-weight: 500; opacity: .8; }
+.loop li:first-child { border-radius: 7px 0 0 7px; } .loop li:last-child { border-radius: 0 7px 7px 0; }
+.loop b { overflow: hidden; color: var(--text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; transition: color .18s var(--ease); }
+.loop li + li::before { content: ""; position: absolute; z-index: 1; left: -4px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border: solid var(--line-3); border-width: 1.5px 1.5px 0 0; rotate: 45deg; }
+.loop li.on { background: var(--ok-soft); } .loop li.on b { color: var(--ok); }
+.loop li.warn { background: var(--warn-soft); } .loop li.warn b { color: var(--warn); }
+.loop li.bad { background: var(--danger-soft); } .loop li.bad b { color: var(--danger); }
+.loop li:first-child:hover::after, .loop li:first-child:focus-visible::after { left: 0; translate: 0 0; }
+.loop li:last-child:hover::after, .loop li:last-child:focus-visible::after { left: auto; right: 0; translate: 0 0; }
+/* Đèn bơm trên app: vòng lan ra khi đang bơm (trạng thái, không trang trí) */
+.p-dot.on { animation: p-pulse 1.6s ease-out infinite; }
+@keyframes p-pulse { 0% { box-shadow: 0 0 0 0 rgba(23, 178, 106, .45); } 100% { box-shadow: 0 0 0 9px rgba(23, 178, 106, 0); } }
+
 /* ---------- Bàn thí nghiệm: phần cứng ---------- */
 .lcd16 {
   font: 700 15px/1.4 var(--mono); color: #1a2b0a; letter-spacing: .08em; white-space: pre; overflow: hidden;
@@ -610,6 +664,11 @@ figcaption small { font-weight: 400; color: var(--text-3); }
   .stage-hint { bottom: calc(var(--s2) * 2 + var(--dock-h)); }
   .player { top: var(--s2); }
   .player { width: calc(100% - 16px); }
+  .tour { top: var(--s2); left: var(--s2); right: var(--s2); width: auto; }
+  .app[data-tour] .fw { display: none; } /* thẻ học nhanh chiếm đỉnh viewport; trạng thái firmware đọc trong thẻ và LCD */
+  .app[data-tour] .pane-r { max-height: 44%; } /* chừa một khoảng mô hình giữa thẻ học nhanh và tấm điều khiển */
+  .tour .asm-now { max-height: 26vh; }
+  #tourBtn > span { display: none; }
   .asm-now { max-height: 28vh; }
   .paper { padding: var(--s4); }
   .steps > li { grid-template-columns: 28px 1fr; padding: var(--s4); }

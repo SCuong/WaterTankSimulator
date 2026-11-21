@@ -144,7 +144,7 @@
       micaBox: thinPet(0.6) || { opacity: 0.22, roughness: 0.1, color: 0xeaf2f5, envMapIntensity: 1, clearcoat: 0, blending: THREE.NormalBlending, side: THREE.DoubleSide },
       // Nước trong: khúc xạ cảnh phía sau (thước, khay, bơm), ngả xanh lơ theo độ sâu
       // Nước: bán trong ngả xanh lơ nhạt + mặt gợn phản chiếu cửa sổ. Không dùng transmission: lượt khúc xạ của r147
-      // vẽ lại cả cảnh mỗi khung, chồng với hậu kỳ thì chậm gấp 2–5 lần trên GPU tích hợp
+      // vẽ lại cả cảnh mỗi khung, chậm gấp 2–5 lần trên GPU tích hợp
       water: real ? { transmission: 0, opacity: 0.5, roughness: 0.02, color: 0x1a6680, normalMap: rippleTex, normalScale: new THREE.Vector2(0.3, 0.3), specularIntensity: 1, envMapIntensity: 1.6, thickness: 0, attenuationDistance: Infinity }
         : { transmission: 0, opacity: 0.6, roughness: 0.12, color: 0x2a9fd0, normalMap: null, thickness: 0, attenuationDistance: Infinity },
       // Silicone trong: bán trong, vẽ cả mặt trong để thấy lòng ống rỗng, phản chiếu bóng
@@ -171,7 +171,7 @@
     if (!rootG) return; const real = look === 'real', hq = quality === 'high';
     rootG.traverse((o) => { const l = o.userData.lod; if (l) o.visible = l === 'cad' ? !real : l === 'fine' ? real : real && hq; });
   }
-  // Thực tế vẽ qua hậu kỳ + transmission (nhiều lượt toàn màn hình): trần 1,5× thay vì 2× giảm ~44 % số điểm ảnh, mắt khó thấy khác
+  // Thực tế nặng hơn (bóng mềm VSM, phòng lab): trần 1,5× thay vì 2× giảm ~44 % số điểm ảnh, mắt khó thấy khác
   function applyPR() {
     const pr = quality === 'low' ? 1 : Math.min(window.devicePixelRatio || 1, look === 'real' ? 1.5 : 2);
     if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); resize(); }
@@ -259,7 +259,7 @@
   function resize() {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h) return;
-    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); if (post) post.setSize(w, h);
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
 
   // ---------- dựng hình ----------
@@ -447,6 +447,8 @@
       dyn.flows[k] = { grp, n, u: 0, len: dyn.curves[k].getLength() };
     }
     dyn.stream = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 1, 10), M.water); fxG.add(dyn.stream);
+    // Vòng sóng lan ra nơi dòng bơm chạm mặt nước: nhìn từ xa vẫn biết bình đang được cấp nước
+    dyn.splash = [0, 1, 2].map(() => { const r = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false, side: THREE.DoubleSide })); r.rotation.x = -Math.PI / 2; r.visible = false; fxG.add(r); return r; });
     dyn.leakDrops = new THREE.Group(); fxG.add(dyn.leakDrops);
     for (let i = 0; i < 3; i++) dyn.leakDrops.add(new THREE.Mesh(dropGeo, M.drop));
     dyn.ping = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), M.ping); dyn.ping.rotation.x = -Math.PI / 2; fxG.add(dyn.ping);
@@ -472,7 +474,7 @@
     dimsG.traverse((o) => { o.userData.fx = true; });
     measureG = new THREE.Group(); rootG.add(measureG);
 
-    applyLod(); applyClip(); placeLab(); if (post) post.collect(scene); shadowDirty();
+    applyLod(); applyClip(); placeLab(); shadowDirty();
     selBox = null; if (selected && !parts[selected]) selected = null;
     if (hidden.size) [...hidden].forEach((id) => { if (!parts[id]) hidden.delete(id); });
     if (isolated && !parts[isolated]) isolated = null;
@@ -511,6 +513,40 @@
     const mid = a1.clone().add(b1).multiplyScalar(0.5); mid.y = Math.max(a1.y, b1.y) + lift;
     const c = new THREE.CatmullRomCurve3([A, a1, mid, b1, B], false, 'centripetal');
     const mesh = new THREE.Mesh(new THREE.TubeGeometry(c, 48, low ? 0.6 : 0.7, 8), wm(color)); mesh.castShadow = true; g.add(mesh);
+    return c;
+  }
+  // ---- Dòng điện (vàng) và tín hiệu (xanh lơ): lớp sọc sáng trượt dọc đúng sợi dây đang dẫn ----
+  // Chỉ dịch texture offset mỗi khung, không tạo hình học mới. 'dash' = dòng liên tục, 'pulse' = một xung chạy qua.
+  let flowOn = true, wireCurves = {}, flowTex = null, introA = null;
+  const INTRO_TRAVEL = 1200, INTRO_GAP = 280; // ms: thời gian bay của một bộ phận, độ trễ giữa hai bước lắp
+  const AMP = 0xffc21a, SIG = 0x3fd0f0, DASH_MM = 10, PULSE_MM = 14;
+  const still = matchMedia('(prefers-reduced-motion: reduce)'); // giảm chuyển động: sọc đứng yên, xung dừng giữa dây (vẫn thấy dây nào đang dẫn)
+  function flowPath(g, kind, color, segs) {
+    if (!flowTex) {
+      const strip = (w, a, b) => { const t = canvasTex(w, 4, (x) => { const gr = x.createLinearGradient(a, 0, b, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(a, 0, b - a, 4); }); return t; };
+      flowTex = { dash: strip(32, 0, 14), pulse: strip(64, 16, 48) };
+      flowTex.dash.wrapS = THREE.RepeatWrapping; flowTex.pulse.wrapS = THREE.ClampToEdgeWrapping;
+    }
+    let s0 = 0;
+    const out = segs.filter((x) => x && x.c).map(({ c, r, rev }) => {
+      const len = c.getLength(), tex = flowTex[kind].clone(); tex.needsUpdate = true;
+      const rep = kind === 'dash' ? len / DASH_MM : len / (2 * PULSE_MM); tex.repeat.set(rep, 1);
+      const mat = new THREE.MeshBasicMaterial({ map: tex, color, transparent: true, depthWrite: false, toneMapped: false });
+      const mesh = new THREE.Mesh(new THREE.TubeGeometry(c, Math.max(40, Math.round(len / 3)), r + 0.4, 8), mat);
+      mesh.visible = false; mesh.renderOrder = 3; mesh.userData.fx = true; g.add(mesh);
+      const sg = { mesh, tex, len, rep, rev, s0 }; s0 += len; return sg;
+    });
+    return { kind, segs: out, total: s0 };
+  }
+  function flowDash(P, on, dt, speed) {
+    for (const sg of P.segs) { sg.mesh.visible = on; if (on) sg.tex.offset.x += (sg.rev ? 1 : -1) * speed * dt / DASH_MM; }
+  }
+  function flowPulse(P, p) { // p: 0..1 vị trí xung trên cả đường; null = không có xung
+    for (const sg of P.segs) {
+      const loc = p == null ? -9 : (p * P.total - sg.s0) / sg.len, at = sg.rev ? 1 - loc : loc;
+      sg.mesh.visible = loc > -0.2 && loc < 1.2;
+      if (sg.mesh.visible) sg.tex.offset.x = 0.5 - at * sg.rep;
+    }
   }
   const raw = (pt, dir) => ({ p: new THREE.Vector3(pt[0], pt[1], pt[2]), d: new THREE.Vector3(dir[0], dir[1], dir[2]).normalize(), kind: 'p' });
   // ---- Bó dây theo kênh (Design E.harness) ----
@@ -577,6 +613,7 @@
       const up = (v, y) => new THREE.Vector3(v.x, y, v.z), f0 = fl[0], f1 = fl[fl.length - 1];
       const pts = [].concat(r.sa.entry ? [] : [r.sa.A, r.sa.B, up(f0, r.sa.B.y)], fl, r.sb.entry ? [] : [up(f1, r.sb.B.y), r.sb.B, r.sb.A]);
       const c = roundPath(pts, 4), mesh = new THREE.Mesh(new THREE.TubeGeometry(c, Math.max(40, Math.round(c.getLength() / 3)), 0.7, 8), wm(r.color)); mesh.castShadow = true; g.add(mesh);
+      wireCurves[r.from + '>' + r.to] = c;
       HR.runs.push({ from: r.from, to: r.to, color: r.color, len: Math.round(c.getLength()), via: [...new Set(r.segs.map((sg) => sg.l.name))], xz: pts.map((v) => [v.x, v.z]) });
     }
     // Dây rút dọc mỗi kênh, nơi có ≥ 2 dây đi qua (cách điểm rẽ ≥ 6 mm)
@@ -603,7 +640,9 @@
       const hd = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, 2.4), M.white); hd.quaternion.copy(q); hd.position.copy(at).add(new THREE.Vector3(0, r + 1.2, 0).applyQuaternion(q)); g.add(lod(hd, 'fine'));
     } };
     // Cáp ngoài: từ cảm biến/bơm tới điểm vào kênh (độ dài tính BOM), tách sợi tại đó
-    ties(tubeAlong(g, W.hc.pts, 1.3, M.wHc), 1.3, 4); ties(tubeAlong(g, W.ws.pts, 1.1, M.wLeak), 1.1, 3); ties(tubeAlong(g, W.pumpW.pts, 1.2, M.wPump), 1.2, 3);
+    wireCurves = {};
+    const hcC = tubeAlong(g, W.hc.pts, 1.3, M.wHc), pumpC = tubeAlong(g, W.pumpW.pts, 1.2, M.wPump);
+    ties(hcC, 1.3, 4); ties(tubeAlong(g, W.ws.pts, 1.1, M.wLeak), 1.1, 3); ties(pumpC, 1.2, 3);
     const hcA = raw(first('hc'), [0, 1, 0]), wsA = raw(first('ws'), [1, 0, 0]);
     [['hc.VCC', 'red'], ['hc.TRIG', 'yellow'], ['hc.ECHO', 'green'], ['hc.GND', 'black']].forEach(([k, c]) => lead(g, P(k), hcA, c, true));
     [['ws.S', 'orange'], ['ws.VCC', 'red'], ['ws.GND', 'black']].forEach(([k, c]) => lead(g, P(k), wsA, c, true));
@@ -614,7 +653,7 @@
     lead(g, P('dom1.5V'), P('dom2.5V'), 'red', true); lead(g, P('dom1.GND'), P('dom2.GND'), 'black', true);
     lead(g, P('ams.VOUT'), P('esp.VCC'), 'orange', true); lead(g, P('ams.VOUT'), P('esp.EN'), 'orange', true); lead(g, P('ams.GND'), P('esp.GND'), 'black', true);
     lead(g, P('ams.VOUT'), P('lvl.LV'), 'orange', true); lead(g, P('ams.GND'), P('lvl.GND'), 'black', true);
-    lead(g, P('lvl.LV1'), P('esp.RX'), 'violet', true); lead(g, P('esp.TX'), P('lvl.LV2'), 'pink', true);
+    const txC = lead(g, P('lvl.LV1'), P('esp.RX'), 'violet', true); lead(g, P('esp.TX'), P('lvl.LV2'), 'pink', true);
     // Dây đi kênh: nguồn trước, tín hiệu sau; đỏ/đen đi cặp
     const R = [
       [ent('hc'), P('dom2.5V'), 'red', 'Cáp HC-SR04 · VCC', 'Domino 2 · 5V'], [ent('hc'), P('dom2.GND'), 'black', 'Cáp HC-SR04 · GND', 'Domino 2 · GND'],
@@ -631,6 +670,16 @@
       [P('mega.D18'), P('lvl.HV1'), 'violet', 'Mega D18 · TX1', 'Chuyển mức HV1'], [P('lvl.HV2'), P('mega.D19'), 'pink', 'Chuyển mức HV2', 'Mega D19 · RX1'],
     ].map(([a, b, color, from, to]) => ({ a, b, color, from, to }));
     harness(g, R, m.E.harness, m.parts.megaBox ? { mega: m.SPEC.megaBox.h + 4 } : {});
+    // Chiều chạy theo dòng quy ước: 5V → COM → NO → bơm → GND; tín hiệu từ chân phát tới chân nhận
+    const C = wireCurves, sg = (c, r, rev) => ({ c, r, rev });
+    dyn.elec = {
+      pumpIn: flowPath(g, 'dash', AMP, [sg(C['Domino 1 · 5V>Relay COM'], 0.7), sg(C['Dây bơm · +>Relay NO'], 0.7, true), sg(pumpC, 1.2, true)]),
+      pumpOut: flowPath(g, 'dash', AMP, [sg(C['Dây bơm · −>Domino 1 · GND'], 0.7)]),
+      d6: flowPath(g, 'dash', SIG, [sg(C['Mega D6>Relay IN'], 0.7)]),
+      trig: flowPath(g, 'pulse', SIG, [sg(C['Cáp HC-SR04 · TRIG>Mega D9'], 0.7, true), sg(hcC, 1.3, true)]),
+      echo: flowPath(g, 'pulse', SIG, [sg(hcC, 1.3), sg(C['Cáp HC-SR04 · ECHO>Mega D10'], 0.7)]),
+      tx: flowPath(g, 'pulse', SIG, [sg(C['Mega D18 · TX1>Chuyển mức HV1'], 0.7), sg(txC, 0.6)]),
+    };
     // Khung bao các module (bản vẽ đi dây nhìn từ trên)
     for (const id of ['megaBox', 'mega', 'espKit', 'relay', 'buzzer', 'power', 'lcd', 'lcdPanel', 'splash', 'ctrlBox']) if (parts[id]) { const b = new THREE.Box3().setFromObject(parts[id].g); if (!b.isEmpty()) HR.boxes[id] = [b.min.x, b.min.z, b.max.x, b.max.z]; }
   }
@@ -702,6 +751,31 @@
     tweenTo(c.clone().add(dir.multiplyScalar(Math.max(260, size * 2.2))), c);
   }
 
+  // ---- Màn dựng từ đầu: camera tới cụm bộ phận của bước k; các bộ phận đó phát sáng Cobalt khi bay vào rồi dịu dần ----
+  // Vật liệu dùng chung giữa các bộ phận nên phát sáng bằng bản sao vật liệu (một bản sao cho mỗi vật liệu gốc trong bước), trả lại khi đổi bước.
+  const GLOW = 0x2563eb;
+  let glow = null;
+  function storyStep(k) {
+    if (glow) { glow.meshes.forEach(([o, m]) => { o.material = m; }); glow.mats.forEach((c) => c.dispose()); rootG.remove(glow.frame); glow.frame.geometry.dispose(); glow = null; }
+    if (k == null || !model) return;
+    const ids = (model.steps[k] ? model.steps[k].parts : []).filter((id) => parts[id]);
+    if (!ids.length) { view('front'); return; }
+    rootG.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    ids.forEach((id) => { const g = parts[id].g, b = new THREE.Box3().setFromObject(g); if (!b.isEmpty()) box.union(b.translate(g.position.clone().negate())); }); // vị trí đã lắp, không phải chỗ đang bay
+    const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length();
+    const d = Math.max(380, r * 2.4) * Math.max(1, 1.25 / camera.aspect), dir = V([0.42, 0.55, 1]).normalize(); // chéo 3/4 từ trước-phải, hơi cao, đủ xa để thấy bộ phận nằm ở đâu trên mô hình
+    tweenTo(c.clone().add(dir.multiplyScalar(d)), c); tween.k = 1.5;
+    // Khung Cobalt quanh chỗ sẽ lắp: chỉ rõ vị trí cả với bộ phận trong suốt (bình, hộp nguồn) không phát sáng được
+    const frame = new THREE.Box3Helper(box.clone().expandByScalar(4), GLOW); frame.material.transparent = true; frame.material.depthTest = false; frame.renderOrder = 4; frame.userData.fx = true; rootG.add(frame);
+    const clones = new Map(); glow = { meshes: [], mats: [], frame, t0: performance.now(), land: asm ? asm.travel * (1 + asm.gap * (ids.length - 1)) : 0 };
+    ids.forEach((id) => parts[id].g.traverse((o) => {
+      if (!o.isMesh || o.userData.fx || Array.isArray(o.material) || !o.material || !o.material.emissive || o.material.transparent) return; // nhựa trong, nước: phát sáng thành mảng trắng chói
+      let cl = clones.get(o.material); if (!cl) { cl = o.material.clone(); cl.emissive = new THREE.Color(GLOW); clones.set(o.material, cl); glow.mats.push(cl); }
+      glow.meshes.push([o, o.material]); o.material = cl;
+    }));
+  }
+
   function addMeasurePoint(pt) {
     if (mPts.length === 2) clearMeasure();
     mPts.push(pt.clone());
@@ -724,8 +798,11 @@
     if (instant) { camera.position.copy(pos); controls.target.copy(target); controls.update(); tween = null; return; }
     tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: target, u: 0 };
   }
+  // inset: có thẻ hướng dẫn nổi ở đỉnh viewport → nâng camera và tâm nhìn lên cùng lúc, vật cần xem rơi xuống phần không bị che
+  let inset = false;
   function view(name, instant) {
     if (!model) return;
+    const tweenTo2 = (p, t, inst) => { if (inset) { const up = p.distanceTo(t) * 0.12; p.y += up; t.y += up; } tweenTo(p, t, inst); };
     const L = model.base ? model.base.L : model.metrics.footX * 1.12, cy = model.tank.rim * 0.42, tgt = new THREE.Vector3(0, cy, 0);
     const pos = {
       iso: [L * 0.68, L * 0.7, L * 1.12], front: [0, cy + 20, L * 1.55], top: [0.01, L * 1.7, 0.02], side: [L * 1.35, cy + 40, 0.01],
@@ -735,33 +812,23 @@
       pump: [[model.res.x, model.res.H * 0.5, model.res.z], [-0.6, 0.55, 1], 360],
       control: [[(model.E.mega.x + model.E.lcd.x) / 2, 35, (model.E.mega.z + model.E.lcd.z) / 2], [0.5, 0.62, 1], 380],
     }[name];
-    if (close) { lastView = name; const [c, d, r] = close, dir = V(d).normalize(); tweenTo(V(c).add(dir.multiplyScalar(r)), V(c), instant); return; }
+    if (close) { // khung 3D hẹp/cao (panel + điện thoại đang mở) hoặc bị thẻ che → lùi ra để vẫn thấy bộ phận nằm ở đâu trên mô hình
+      lastView = name; const [c, d, r] = close, dir = V(d).normalize(), k = Math.max(1, 1.4 / camera.aspect) * (inset ? 1.5 : 1);
+      tweenTo2(V(c).add(dir.multiplyScalar(r * k)), V(c), instant); return;
+    }
     if (!pos) return view('iso', instant);
     lastView = name;
     if (name === 'iso' && look === 'real') { // bố cục như ảnh tham chiếu: chéo 3/4 từ trước-phải, tầm mắt người đứng, thấy cửa sổ và bảng treo
       const kr = Math.max(1, 1.25 / Math.max(0.4, camera.aspect)) * (1 + 0.5 * ex.target), t = V([-0.12 * L, cy * 0.75, -0.14 * L]);
-      return tweenTo(V([1.02 * L, 0.74 * L, 1.55 * L]).sub(t).multiplyScalar(kr).add(t), t, instant);
+      return tweenTo2(V([1.02 * L, 0.74 * L, 1.55 * L]).sub(t).multiplyScalar(kr).add(t), t, instant);
     }
     const k = Math.max(1.32, 1.5 / Math.max(0.5, camera.aspect)) * (1 + 0.5 * ex.target); // khung hẹp (điện thoại) hoặc đang tháo rời → lùi camera
     pos[0] *= k; pos[1] = cy + (pos[1] - cy) * k; pos[2] *= k;
-    tweenTo(V(pos), tgt, instant);
+    tweenTo2(V(pos), tgt, instant);
   }
 
-  // Thực tế + chất lượng cao: vẽ qua hậu kỳ (post3d.js). AO + DOF chỉ hiện dần khi camera đứng yên 0,35 s, tắt ngay khi xoay
-  let post = null, postK = 0, lastMove = 0, lastDraw = 0, depthStale = true; const camP = new THREE.Vector3(), camT = new THREE.Vector3();
-  function renderFrame(dt, now, changed) {
-    lastDraw = now;
-    if (look !== 'real' || quality !== 'high' || !root.Post3D) { renderer.render(scene, camera); return; }
-    if (!post) { post = root.Post3D(THREE, renderer); post.setSize(host.clientWidth, host.clientHeight); post.collect(scene); }
-    if (tween || camP.distanceToSquared(camera.position) > 0.01 || camT.distanceToSquared(controls.target) > 0.01) { lastMove = now; postK = 0; depthStale = true; camP.copy(camera.position); camT.copy(controls.target); } // ngưỡng 0,1 mm: damping của OrbitControls trôi rất lâu
-    else if (now - lastMove > 350) postK = Math.min(1, postK + dt * 3);
-    if (changed) depthStale = true;
-    // Đang xoay (k = 0): vẽ thẳng ra màn hình, renderer đã tone map ACES y hệt hậu kỳ — bỏ render target HDR MSAA + lượt quad (~một nửa thời gian khung)
-    if (postK < 0.001) { renderer.render(scene, camera); return; }
-    const k = postK, fresh = depthStale; // độ sâu chỉ gồm vật đục: camera và bộ phận đứng yên thì dùng lại
-    post.render(scene, camera, k, camera.position.distanceTo(controls.target), section ? [section.plane] : null, fresh);
-    if (fresh) depthStale = false;
-  }
+  // Vẽ thẳng ra màn hình (renderer tự tone map ACES ở Thực tế). Đã bỏ hậu kỳ AO + DOF: hiện dần khi camera đứng yên làm ảnh lấm tấm hạt và nháy.
+  function renderFrame() { renderer.render(scene, camera); }
   // Máy không kham nổi (dưới ~20 khung/s liên tục 3 s khi đang xem): tự hạ chất lượng một lần
   let slowT = 0, autoLow = false, qualityCb = () => {};
   function watchSpeed(dt) {
@@ -774,10 +841,14 @@
   function partOffset(id, now) {
     const P = parts[id];
     const full = P.explode.clone().add(clusterOff[P.cluster]);
+    if (introA) { // màn mở đầu: bộ phận bay về chỗ lần lượt theo thứ tự bước lắp ráp
+      const u = introA.t0 == null ? 0 : clamp((now - introA.t0 - (stepOf[id] || 0) * INTRO_GAP) / INTRO_TRAVEL, 0, 1), e = 1 - Math.pow(1 - u, 3);
+      return full.multiplyScalar(1.6 * (1 - e));
+    }
     if (asm) {
       if (stepOf[id] !== asm.step) return new THREE.Vector3();
       const order = model.steps[asm.step].parts.indexOf(id);
-      const u = clamp((now - asm.t0) / 1100 - order * 0.25, 0, 1), e = 1 - Math.pow(1 - u, 3);
+      const u = clamp((now - asm.t0) / asm.travel - order * asm.gap, 0, 1), e = 1 - Math.pow(1 - u, 3);
       return full.multiplyScalar(1.4 * (1 - e));
     }
     if (ex.cluster !== 'all' && ex.cluster !== P.cluster) return new THREE.Vector3();
@@ -805,23 +876,25 @@
     ex.cur += (ex.target - ex.cur) * (1 - Math.exp(-dt * 5));
     if (Math.abs(ex.target - ex.cur) < 1e-4) ex.cur = ex.target;
     for (const id in parts) { const P = parts[id]; P.g.position.copy(partOffset(id, now)); P.g.visible = isVisible(id); }
-    if (tween) {
-      tween.u = Math.min(1, tween.u + dt * 2.2); const e = 1 - Math.pow(1 - tween.u, 3);
+    if (tween && !(introA && introA.t0 == null)) {
+      tween.u = Math.min(1, tween.u + dt * (tween.k || 2.2)); const e = 1 - Math.pow(1 - tween.u, 3);
       camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.t0, tween.t1, e);
       if (tween.u >= 1) tween = null;
     }
     controls.update();
     if (selBox) selBox.update();
-    const assembled = ex.cur < 0.005 && (!asm || asm.step === model.steps.length - 1);
+    // Đồng hồ mở đầu chỉ chạy từ khung thứ 3: khung đầu còn biên dịch shader / tải texture, tính giờ sớm thì người xem lỡ nửa đầu
+    if (glow) { const t = now - glow.t0, I = t < glow.land ? 0.5 : 0.12 + 0.38 * Math.exp(-(t - glow.land) / 380); glow.mats.forEach((m) => { m.emissiveIntensity = I; }); glow.frame.material.opacity = Math.min(1, I * 1.8); } // sáng khi bay, dịu còn vệt nhẹ khi đã vào chỗ
+    if (introA && introA.t0 == null && ++introA.frames >= 3) introA.t0 = now;
+    if (introA && introA.t0 != null && now - introA.t0 > introA.ms) introA = null;
+    const assembled = ex.cur < 0.005 && (!asm || asm.step === model.steps.length - 1) && !introA;
     fxG.visible = assembled;
     dimsG.visible = dimsOn && ex.cur < 0.005 && !asm;
-    // Dấu vết vị trí + ẩn/hiện các bộ phận: đổi thì vẽ lại bóng và độ sâu hậu kỳ
+    // Dấu vết vị trí + ẩn/hiện các bộ phận: đổi thì vẽ lại bóng
     let sig = dyn.valveLever ? dyn.valveLever.rotation.y.toFixed(2) : '';
     for (const id in parts) { const g = parts[id].g; if (g.visible) sig += id + g.position.x.toFixed(1) + ',' + g.position.y.toFixed(1) + ',' + g.position.z.toFixed(1); }
     const changed = sig !== lastSig; if (changed) { lastSig = sig; shadowDirty(); }
-    // Thực tế chất lượng cao, camera và cảnh đứng yên: 30 khung/s là đủ cho nước gợn, đèn LED (đỡ một nửa tải GPU)
-    if (!changed && !tween && look === 'real' && quality === 'high' && postK >= 1 && now - lastDraw < 31) { placeLabels(assembled); return; }
-    renderFrame(dt, now, changed);
+    renderFrame();
     placeLabels(assembled);
   }
 
@@ -885,6 +958,26 @@
     const top = m.tank.rim - 15, surf = m.tank.yIn + s.level;
     dyn.stream.visible = running && dyn.flows.pump.grp.visible;
     if (dyn.stream.visible) { const hgt = Math.max(1, top - surf); setH(dyn.stream, hgt); dyn.stream.position.set(m.tank.x, surf + hgt / 2, m.tank.z + 18); }
+    const qn = clamp(s.q.pump / k.qMax, 0, 1);
+    dyn.splash.forEach((r, i) => {
+      r.visible = dyn.stream.visible; if (!r.visible) return;
+      const u = still.matches ? 0.2 + i * 0.25 : (t * 1.4 + i / 3) % 1, sc = 2.5 + u * (8 + 10 * qn);
+      r.scale.set(sc, sc, 1); r.position.set(m.tank.x, surf + 0.5, m.tank.z + 18); r.material.opacity = 0.75 * (1 - u) * (1 - u);
+    });
+    if (look === 'real' && M.water.normalMap) { const a = 0.18 + 0.55 * qn; M.water.normalScale.set(a, a); } // mặt nước gợn mạnh hơn khi bơm đổ vào
+    // Dòng điện bơm + lệnh D6 khi relay đóng; xung TRIG/ECHO mỗi chu kỳ đo (mất ECHO thì chỉ còn TRIG); khung UART gửi ESP-01
+    const E = dyn.elec, live = flowOn && !s.faults.power, dts = Math.min(dtReal, 0.1);
+    if (E) {
+      const run = live && d.pump;
+      const sp = still.matches ? 0 : 1;
+      flowDash(E.pumpIn, run, dts, 70 * sp); flowDash(E.pumpOut, run, dts, 70 * sp); flowDash(E.d6, run, dts, 40 * sp);
+      const meas = live && d.booting <= 0, echo = s.faults.sensor !== 'timeout', u = (t * 1.25) % 1, v = (t * 0.6) % 1;
+      if (still.matches) { flowPulse(E.trig, meas ? 0.5 : null); flowPulse(E.echo, meas && echo ? 0.5 : null); flowPulse(E.tx, meas ? 0.5 : null); } else {
+        flowPulse(E.trig, meas && u < 0.5 ? u / 0.5 : null);
+        flowPulse(E.echo, meas && echo && u >= 0.5 ? (u - 0.5) / 0.5 : null);
+        flowPulse(E.tx, meas && v < 0.6 ? v / 0.6 : null);
+      }
+    }
     dyn.leakDrops.visible = s.q.leak > 0;
     const spill = s.q.spill > 0; // tràn miệng bình (bản đơn giản) hoặc rò đáy
     if (dyn.leakDrops.visible) dyn.leakDrops.children.forEach((c, i) => { const u = (t * 1.4 + i / 3) % 1, y0 = spill ? m.tank.rim : m.tank.y0 + 2, y1 = m.tray.y + m.T; c.position.set(m.tank.x + (i - 1) * 6, y0 - u * (y0 - y1) * (spill ? 1 : 0.1), m.tank.z + m.tank.OD / 2 + 2 + (spill ? 1 : u * 18)); });
@@ -945,14 +1038,10 @@
 
   root.Scene3D = {
     _cam: (pos, tgt) => tweenTo(V(pos), V(tgt), true),
-    // Đo thời gian vẽ một khung (ms, chờ GPU xong bằng readPixels): 'move' = đang xoay, 'idle' = đứng yên; 'moveOld'/'old' = như trên nhưng vẽ lại bóng (+ độ sâu) mỗi khung như trước
+    // Đo thời gian vẽ một khung (ms, chờ GPU xong bằng readPixels); 'old' = vẽ lại bóng mỗi khung như trước
     _bench(mode = 'idle', n = 20) {
       const gl = renderer.getContext(), px = new Uint8Array(4), t0 = performance.now();
-      for (let i = 0; i < n; i++) {
-        if (mode.startsWith('move')) { postK = 0; lastMove = performance.now(); if (mode === 'moveOld') shadowDirty(); } else { postK = 1; lastMove = 0; if (mode === 'old') { depthStale = true; shadowDirty(); } }
-        camP.copy(camera.position); camT.copy(controls.target);
-        renderFrame(0.016, performance.now(), false); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-      }
+      for (let i = 0; i < n; i++) { if (mode === 'old') shadowDirty(); renderFrame(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
       return +((performance.now() - t0) / n).toFixed(1);
     }, // camera cố định cho ảnh kiểm tra
     setLook, getLook: () => look, snapshot, setQuality, getQuality: () => quality, pins: () => Object.keys(pinReg), // pins(): kiểm tra đi dây trong Console
@@ -965,8 +1054,24 @@
     isHidden: (id) => hidden.has(id),
     isolate(id) { isolated = id || null; }, getIsolated: () => isolated,
     showAll() { hidden.clear(); isolated = null; },
-    setSection, setDims(b) { dimsOn = b; }, setLabels(b) { labelsOn = b; tip.hidden = true; },
+    setInset(b) { inset = !!b; },
+    setSection, setDims(b) { dimsOn = b; }, setLabels(b) { labelsOn = b; tip.hidden = true; }, setFlow(b) { flowOn = b; },
     setMeasure(b) { measureOn = b; if (!b) clearMeasure(); renderer.domElement.style.cursor = b ? 'crosshair' : 'grab'; }, clearMeasure,
-    setAssembly(k) { asm = k == null ? null : { step: k, t0: performance.now() }; },
+    // fast: nhịp của màn "dựng từ đầu" (bay 0,75 s, bộ phận sau trễ 0,15 s); k = -1 là bàn trống
+    setAssembly(k, fast) { asm = k == null ? null : { step: k, t0: performance.now(), travel: fast ? 750 : 1100, gap: fast ? 0.2 : 0.25 }; },
+    storyStep,
+    // Màn mở đầu: bộ phận bay về chỗ lần lượt theo bước lắp ráp trong khi camera lia từ trên cao, lệch trái về góc nhìn `name`.
+    // Trả về thời lượng (s) để app cho Mega "khởi động" cùng lúc. Chạm/xoay chuột là dừng lia; giảm chuyển động thì bỏ qua.
+    intro(name) {
+      if (!model) return 0;
+      view(name || lastView, true); if (still.matches) return 0;
+      const p1 = camera.position.clone(), t1 = controls.target.clone();
+      const off = p1.clone().sub(t1).applyAxisAngle(UP, -0.85).multiplyScalar(1.45); off.y *= 1.25;
+      camera.position.copy(t1).add(off); controls.update();
+      const ms = INTRO_TRAVEL + Math.max(0, ...Object.values(stepOf)) * INTRO_GAP;
+      tween = { p0: camera.position.clone(), t0: t1.clone(), p1, t1, u: 0, k: 1000 / ms };
+      introA = { t0: null, frames: 0, ms };
+      return ms / 1000;
+    },
   };
 })(window);
