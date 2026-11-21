@@ -1,0 +1,5 @@
+.vercel/
+.shots/
+.impeccable/hook.cache.json
+.claude/settings.local.json
+node_modules/

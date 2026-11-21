@@ -1,0 +1,16 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box;margin:0}body{width:1440px;height:900px;overflow:hidden;background:#f5f7fa;color:#111827;font:14px/1.45 system-ui,sans-serif;display:grid;grid-template-columns:220px 1fr}
+nav{background:#fff;border-right:1px solid #e5e7eb;padding:20px 14px;display:grid;gap:6px;align-content:start}nav b{font-size:17px;margin-bottom:14px}nav span{padding:10px 12px;border-radius:8px;color:#4b5563}nav span.on{background:#eff6ff;color:#2563eb;font-weight:600}
+main{padding:24px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:110px 1fr 200px;gap:16px}
+.c{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}.c small{color:#6b7280}.c b{display:block;font-size:30px}
+.big{grid-column:1/4;position:relative}.m{position:absolute;border:1.5px solid #9ca3af}.w{position:absolute;background:rgba(37,99,235,.25)}
+.btn{background:#2563eb;color:#fff;border-radius:8px;padding:10px 14px;text-align:center;font-weight:600;margin-top:10px}
+</style></head><body>
+<nav><b>Bể chứa Arduino</b><span class="on">Vận hành</span><span>Tháo rời</span><span>Chế tạo</span></nav>
+<main>
+<div class="c"><small>Mực nước</small><b>40 %</b></div><div class="c"><small>Máy bơm</small><b>Đang chạy</b></div><div class="c"><small>Chế độ</small><b>Tự động</b></div><div class="c"><small>Kết nối</small><b>Trực tuyến</b></div>
+<div class="c big"><div class="m" style="left:80px;top:360px;width:600px;height:20px"></div><div class="m" style="left:120px;top:220px;width:170px;height:140px"></div><div class="w" style="left:121px;top:280px;width:168px;height:79px"></div><div class="m" style="left:380px;top:60px;width:110px;height:300px"></div><div class="w" style="left:381px;top:240px;width:108px;height:119px"></div></div>
+<div class="c" style="grid-row:2/4;grid-column:4"><small>Điều khiển</small><div class="btn">Bật bơm</div><div style="margin-top:20px">Van xả 35 %</div><div>Rò rỉ ○</div><div>Mất Wi-Fi ○</div></div>
+<div class="c" style="grid-column:1/4"><small>Mực nước 10 phút</small><svg width="900" height="120"><polyline fill="none" stroke="#2563eb" stroke-width="2" points="0,90 150,80 300,60 450,40 600,50 750,70 900,60"/></svg></div>
+</main></body></html>

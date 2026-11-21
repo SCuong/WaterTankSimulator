@@ -1,0 +1,38 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f3f5f3;--white:#fff;--ink:#1a1d1f;--ink2:#5b6268;--line:#c9cecb;--red:#d23c2a;--water:#2a8fc7}
+*{box-sizing:border-box;margin:0}body{width:1440px;height:900px;overflow:hidden;background:var(--paper);color:var(--ink);font:15px/1.45 Barlow,sans-serif}
+.mono{font-family:"JetBrains Mono",monospace}
+.tb{display:grid;grid-template-columns:260px 1fr repeat(4,150px);border:2px solid var(--ink);margin:12px;background:var(--white);height:64px}
+.tb>div{border-left:1px solid var(--ink);padding:8px 12px}.tb>div:first-child{border:0}.tb small{display:block;font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.08em}.tb b{font-size:17px}
+.tabs{display:flex;gap:0;align-items:end;padding:0}.tabs span{padding:20px 16px 8px;color:var(--ink2);font-weight:600}.tabs span.on{color:var(--ink);box-shadow:inset 0 -3px var(--red)}
+main{display:grid;grid-template-columns:1fr 340px 360px;gap:12px;padding:0 12px;height:800px}
+.stage{border:1px solid var(--ink);background:var(--white);position:relative;background-image:linear-gradient(var(--paper) 1px,transparent 1px),linear-gradient(90deg,var(--paper) 1px,transparent 1px);background-size:20px 20px}
+.m{position:absolute;border:2px solid var(--ink)}.w{position:absolute;background:rgba(42,143,199,.35)}
+.dim{position:absolute;border-top:1px solid var(--red);font:600 12px "JetBrains Mono";color:var(--red);text-align:center;padding-top:2px}
+.side{border:1px solid var(--ink);background:var(--white)}
+.h{padding:12px 16px;border-bottom:1px solid var(--ink);font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-size:13px}
+.sec{padding:16px;border-bottom:1px solid var(--line);display:grid;gap:12px}.row{display:flex;justify-content:space-between}
+.track{height:2px;background:var(--ink);position:relative}.track:after{content:"";position:absolute;left:40%;top:-6px;width:2px;height:14px;background:var(--red)}
+.btn{border:1.5px solid var(--ink);padding:8px 14px;font-weight:600;display:inline-block}
+.phone{width:316px;height:640px;margin:0 auto;border-radius:44px;background:#1a1d1f;padding:10px}.scr{height:100%;border-radius:34px;background:#f2f5f7;padding:18px 14px;display:grid;gap:10px;align-content:start;font-family:system-ui}
+.card{background:#fff;border-radius:18px;padding:14px}
+</style></head><body>
+<div class="tb"><div><small>Đồ án Vi điều khiển</small><b>Bể chứa Arduino</b></div><div class="tabs"><span class="on">Vận hành</span><span>Tháo rời</span><span>Chế tạo</span></div><div><small>Phương án</small><b>Chi tiết</b></div><div><small>Tỷ lệ</small><b class="mono">1:4</b></div><div><small>Đồng hồ</small><b class="mono">08:12:40</b></div><div><small>Cần mua</small><b class="mono">1.020.900</b></div></div>
+<main>
+<section class="stage">
+ <div class="m" style="left:100px;top:540px;width:560px;height:20px"></div>
+ <div class="m" style="left:130px;top:400px;width:160px;height:140px"></div><div class="w" style="left:132px;top:460px;width:156px;height:78px"></div>
+ <div class="m" style="left:330px;top:400px;width:160px;height:140px"></div>
+ <div class="m" style="left:360px;top:170px;width:100px;height:230px"></div><div class="w" style="left:362px;top:300px;width:96px;height:98px"></div>
+ <div class="dim" style="left:100px;top:600px;width:560px">642</div><div class="dim" style="left:360px;top:130px;width:100px">Ø110</div>
+ <div style="position:absolute;left:20px;top:20px;font-weight:700;font-size:28px" class="mono">40 %</div>
+</section>
+<aside class="side"><div class="h">Bàn thí nghiệm</div>
+ <div class="sec"><div class="row"><span>Tốc độ</span><span class="mono">1×</span></div><div class="row"><span>Van xả</span><span class="mono">35 %</span></div><div class="track"></div></div>
+ <div class="sec"><span class="btn">+ 0,5 L</span><span class="btn">Rút cạn</span></div>
+ <div class="h">Gây sự cố</div><div class="sec"><div class="row"><span>Rò rỉ</span><span>○</span></div><div class="row"><span>Bơm yếu</span><span>○</span></div><div class="row"><span>Mất Wi-Fi</span><span>○</span></div><div class="row"><span>Mất điện</span><span>○</span></div></div>
+</aside>
+<aside><div class="phone"><div class="scr"><div style="font:700 19px system-ui">Bể chứa tầng thượng</div><div class="card"><div style="font:700 44px system-ui">40%</div></div><div class="card"><b>Đang bơm</b></div><div class="card">Tự động · Thủ công</div></div></div></aside>
+</main></body></html>

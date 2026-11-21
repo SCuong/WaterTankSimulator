@@ -1,0 +1,428 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T05:10:50.181Z",
+  "title": "Design System: Bể chứa Arduino — Digital Twin",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Cobalt Accent",
+        "canonical": "#2563eb",
+        "tonalRamp": [
+          "#172554",
+          "#1e40af",
+          "#1d4ed8",
+          "#2563eb",
+          "#528bff",
+          "#b2ccff",
+          "#d1e0ff",
+          "#eff4ff"
+        ]
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Deep Cobalt",
+        "canonical": "#1d4ed8"
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Cobalt Wash",
+        "canonical": "#eff4ff"
+      },
+      "accent-line": {
+        "role": "primary",
+        "displayName": "Cobalt Edge",
+        "canonical": "#b2ccff"
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Cool Ground",
+        "canonical": "#f4f6f9"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White Surface",
+        "canonical": "#ffffff"
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Hover Mist",
+        "canonical": "#f9fafb"
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Sunken Grey",
+        "canonical": "#eef1f5"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e4e7ec"
+      },
+      "line-2": {
+        "role": "neutral",
+        "displayName": "Field Edge",
+        "canonical": "#d0d5dd"
+      },
+      "line-3": {
+        "role": "neutral",
+        "displayName": "Strong Edge",
+        "canonical": "#98a2b3"
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#101828",
+        "tonalRamp": [
+          "#101828",
+          "#344054",
+          "#475467",
+          "#526072",
+          "#98a2b3",
+          "#d0d5dd",
+          "#e4e7ec",
+          "#f9fafb"
+        ]
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "Slate",
+        "canonical": "#475467"
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#526072"
+      },
+      "ok": {
+        "role": "status",
+        "displayName": "Ok",
+        "canonical": "#067647",
+        "tonalRamp": [
+          "#067647",
+          "#17b26a",
+          "#abefc6",
+          "#ecfdf3"
+        ]
+      },
+      "warn": {
+        "role": "status",
+        "displayName": "Warn",
+        "canonical": "#93370d",
+        "tonalRamp": [
+          "#93370d",
+          "#f79009",
+          "#fedf89",
+          "#fffaeb"
+        ]
+      },
+      "danger": {
+        "role": "status",
+        "displayName": "Danger",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#b42318",
+          "#f04438",
+          "#fecdca",
+          "#fef3f2"
+        ]
+      },
+      "water": {
+        "role": "domain",
+        "displayName": "Water Sky",
+        "canonical": "#0ba5ec"
+      },
+      "level-low": {
+        "role": "domain",
+        "displayName": "Low Threshold",
+        "canonical": "#dc6803"
+      },
+      "level-high": {
+        "role": "domain",
+        "displayName": "High Threshold",
+        "canonical": "#12b76a"
+      },
+      "dimension": {
+        "role": "domain",
+        "displayName": "Dimension Rust",
+        "canonical": "#b54708"
+      },
+      "lcd-glass": {
+        "role": "embedded",
+        "displayName": "LCD Glass",
+        "canonical": "#a6cf4f"
+      },
+      "lcd-bezel": {
+        "role": "embedded",
+        "displayName": "LCD Bezel",
+        "canonical": "#1d2a17"
+      },
+      "phone-bezel": {
+        "role": "embedded",
+        "displayName": "Phone Bezel",
+        "canonical": "#101113"
+      },
+      "phone-accent": {
+        "role": "embedded",
+        "displayName": "Phone Accent (separate app identity)",
+        "canonical": "#0b72e7"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Paper section titles, part-card title, stat values."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Brand name, current assembly step, sub-section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text, top tabs, switch rows, menu options."
+      },
+      "body-sm": {
+        "displayName": "Body small",
+        "purpose": "Buttons, field labels, segments, panel tabs, tables."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Tooltips, help, table headers, chips, balloons, metadata."
+      },
+      "lcd": {
+        "displayName": "LCD",
+        "purpose": "LCD 1602 emulation only."
+      },
+      "phone-figure": {
+        "displayName": "Phone figure",
+        "purpose": "Big level reading inside the simulated phone only."
+      },
+      "phone-title": {
+        "displayName": "Phone title",
+        "purpose": "Phone app header only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sh-1",
+        "value": "0 1px 2px rgba(16, 24, 40, .05)",
+        "purpose": "Hairline lift on buttons, inputs, paper."
+      },
+      {
+        "name": "sh-2",
+        "value": "0 1px 3px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .04)",
+        "purpose": "Selected segment, stage overlays, balloons, slider thumb."
+      },
+      {
+        "name": "sh-pop",
+        "value": "0 12px 24px -6px rgba(16, 24, 40, .14), 0 4px 8px -2px rgba(16, 24, 40, .06)",
+        "purpose": "Dropdown menus, assembly player, stage hint."
+      },
+      {
+        "name": "ring",
+        "value": "0 0 0 3px rgba(37, 99, 235, .22)",
+        "purpose": "Focus ring on fields, switches, checkboxes, slider thumbs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.2, .8, .2, 1)",
+        "purpose": "Chevron rotation, switch knob, thumb scale, tooltip fade."
+      },
+      {
+        "name": "state",
+        "value": ".12s",
+        "purpose": "Colour, border and shadow changes on hover and press."
+      },
+      {
+        "name": "tooltip",
+        "value": ".14s after .35s delay",
+        "purpose": "Tooltip fade-in."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition: none; animation: none",
+        "purpose": "Applied globally under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack-panels",
+        "value": "1279px"
+      },
+      {
+        "name": "doc-nav-strip",
+        "value": "1023px"
+      },
+      {
+        "name": "single-column",
+        "value": "859px"
+      },
+      {
+        "name": "stage-icons-container",
+        "value": "600px"
+      },
+      {
+        "name": "coarse-pointer",
+        "value": "(pointer: coarse)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default outlined action.",
+      "html": "<button class=\"ds-btn\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\"><path d=\"M12 5v14M5 12h14\"/></svg>0,5 L</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line-2,#d0d5dd);background:var(--surface,#fff);color:var(--text,#101828);font:600 13px Inter,system-ui,sans-serif;box-shadow:0 1px 2px rgba(16,24,40,.05);transition:background .12s,border-color .12s}.ds-btn:hover{background:var(--surface-2,#f9fafb);border-color:var(--line-3,#98a2b3)}.ds-btn:active{background:var(--sunken,#eef1f5)}.ds-btn:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}.ds-i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single primary action in a region.",
+      "html": "<button class=\"ds-btn-pri\">Phát lắp ráp</button>",
+      "css": ".ds-btn-pri{min-height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--accent,#2563eb);background:var(--accent,#2563eb);color:#fff;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 1px 2px rgba(16,24,40,.05);transition:background .12s}.ds-btn-pri:hover{background:var(--accent-hover,#1d4ed8);border-color:var(--accent-hover,#1d4ed8)}.ds-btn-pri:active{background:#1e40af}.ds-btn-pri:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action in section headers.",
+      "html": "<button class=\"ds-btn-ghost\">Mặc định</button>",
+      "css": ".ds-btn-ghost{min-height:30px;padding:0 10px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text-2,#475467);font:600 12px Inter,system-ui,sans-serif}.ds-btn-ghost:hover{background:var(--sunken,#eef1f5);color:var(--text,#101828)}.ds-btn-ghost:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "nav",
+      "refersTo": "segmented",
+      "description": "Camera views, sim speed, variant switch.",
+      "html": "<div class=\"ds-seg\"><button aria-pressed=\"true\">Phối cảnh</button><button aria-pressed=\"false\">Trước</button><button aria-pressed=\"false\">Trên</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;padding:2px;border-radius:8px;background:var(--sunken,#eef1f5);border:1px solid var(--line,#e4e7ec)}.ds-seg button{min-height:30px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--text-2,#475467);font:500 13px Inter,system-ui,sans-serif;transition:background .12s,color .12s}.ds-seg button:hover{color:var(--text,#101828)}.ds-seg button[aria-pressed=true]{background:#fff;color:var(--text,#101828);font-weight:600;box-shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04)}.ds-seg button:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}"
+    },
+    {
+      "name": "Input with unit",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Numeric parameter field with inline unit.",
+      "html": "<label class=\"ds-in\"><input value=\"120\" aria-label=\"Đường kính\"><span>mm</span></label>",
+      "css": ".ds-in{position:relative;display:block;width:200px}.ds-in input{width:100%;min-height:38px;padding:0 44px 0 12px;border:1px solid var(--line-2,#d0d5dd);border-radius:8px;background:#fff;font:400 14px Inter,system-ui,sans-serif;font-feature-settings:\"tnum\" 1;box-shadow:0 1px 2px rgba(16,24,40,.05);transition:border-color .12s,box-shadow .12s}.ds-in input:hover{border-color:var(--line-3,#98a2b3)}.ds-in input:focus{outline:none;border-color:var(--accent,#2563eb);box-shadow:0 0 0 3px rgba(37,99,235,.22)}.ds-in span{position:absolute;right:12px;top:50%;translate:0 -50%;color:var(--text-3,#526072);font:400 13px Inter,system-ui,sans-serif}"
+    },
+    {
+      "name": "Mode Tabs",
+      "kind": "nav",
+      "refersTo": "tabs",
+      "description": "Top-bar mode switch with cobalt underline.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button role=\"tab\" aria-selected=\"true\">Vận hành</button><button role=\"tab\" aria-selected=\"false\">Tháo rời</button><button role=\"tab\" aria-selected=\"false\">Chế tạo</button></div>",
+      "css": ".ds-tabs{display:flex;gap:4px;height:56px;border-bottom:1px solid var(--line,#e4e7ec)}.ds-tabs button{position:relative;border:0;background:none;padding:0 12px;color:var(--text-2,#475467);font:500 14px Inter,system-ui,sans-serif}.ds-tabs button:hover{color:var(--text,#101828)}.ds-tabs button[aria-selected=true]{color:var(--text,#101828);font-weight:600}.ds-tabs button[aria-selected=true]::after{content:\"\";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent,#2563eb)}.ds-tabs button:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:-2px}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Pill filter toggles.",
+      "html": "<div class=\"ds-chips\"><button aria-pressed=\"true\">Tất cả</button><button aria-pressed=\"false\">Điện tử</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px}.ds-chips button{min-height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2,#d0d5dd);background:#fff;color:var(--text-2,#475467);font:500 12px Inter,system-ui,sans-serif}.ds-chips button:hover{border-color:var(--line-3,#98a2b3);color:var(--text,#101828)}.ds-chips button[aria-pressed=true]{border-color:var(--accent,#2563eb);background:var(--accent-soft,#eff4ff);color:var(--accent,#2563eb);font-weight:600}.ds-chips button:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}"
+    },
+    {
+      "name": "Assembly Balloon",
+      "kind": "custom",
+      "refersTo": "balloon",
+      "description": "Numbered CAD balloon with leader line; numbers match the part tree.",
+      "html": "<div class=\"ds-bal-wrap\"><span class=\"ds-lead\"></span><button class=\"ds-bal\">3<span>Bơm chìm 5 V</span></button><button class=\"ds-bal is-sel\">7<span>Relay</span></button></div>",
+      "css": ".ds-bal-wrap{display:flex;gap:24px;align-items:center;padding:12px;background:linear-gradient(180deg,#edf1f5,#cdd5df)}.ds-lead{position:relative;width:40px;height:1.5px;background:#101828;opacity:.75}.ds-lead::before{content:\"\";position:absolute;left:-3px;top:-2.25px;width:6px;height:6px;border-radius:50%;background:#101828}.ds-bal{display:inline-flex;align-items:center;gap:6px;height:24px;min-width:24px;padding:0 7px;border-radius:999px;border:1.5px solid #101828;background:#fff;color:#101828;font:700 12px/1 Inter,system-ui,sans-serif;box-shadow:0 1px 3px rgba(16,24,40,.08)}.ds-bal span{display:none;font-weight:600}.ds-bal:hover,.ds-bal:focus-visible{border-color:#2563eb;color:#2563eb;outline:none}.ds-bal:hover span,.ds-bal:focus-visible span,.ds-bal.is-sel span{display:inline}.ds-bal.is-sel{background:#2563eb;border-color:#2563eb;color:#fff}"
+    },
+    {
+      "name": "Paper Section",
+      "kind": "card",
+      "refersTo": "paper",
+      "description": "Build-mode sheet with a one-row section header.",
+      "html": "<section class=\"ds-paper\"><header><h2>BOM &amp; dự toán</h2><div>Cần mua <b>1.245.000 đ</b></div></header></section>",
+      "css": ".ds-paper{background:#fff;border:1px solid var(--line,#e4e7ec);border-radius:12px;padding:24px 32px 32px;box-shadow:0 1px 2px rgba(16,24,40,.05);font-family:Inter,system-ui,sans-serif}.ds-paper header{display:flex;justify-content:space-between;align-items:center;gap:16px}.ds-paper h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.015em;color:var(--text,#101828)}.ds-paper header div{font-size:13px;color:var(--text-3,#526072);font-feature-settings:\"tnum\" 1}.ds-paper b{color:var(--text,#101828);font-weight:600}"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip",
+      "description": "Home for secondary explanation; dotted underline marks the trigger.",
+      "html": "<span class=\"ds-tip\" tabindex=\"0\" data-tip=\"Nhập kích thước thật đo bằng thước kẹp.\">Kích thước thật</span>",
+      "css": ".ds-tip{position:relative;font:400 13px Inter,system-ui,sans-serif;color:var(--text-3,#526072);text-decoration:underline dotted var(--line-3,#98a2b3);text-underline-offset:3px;cursor:help}.ds-tip:hover::after,.ds-tip:focus-visible::after{content:attr(data-tip);position:absolute;left:50%;top:calc(100% + 8px);translate:-50% 0;width:max-content;max-width:240px;padding:6px 8px;border-radius:6px;background:var(--text,#101828);color:#fff;font:500 12px/1.4 Inter,system-ui,sans-serif}.ds-tip:focus-visible{outline:2px solid var(--accent,#2563eb);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Bench Viewer",
+    "overview": "A category-standard engineering tool: the polish of Arduino Cloud for the live dashboard, Onshape / Fusion web viewer for the 3D part tree and exploded view, Linear / Vercel for type, spacing and interaction. Nothing is personalised by stealth. The world is cool grey ground, white working surfaces, 1px hairline borders, one blue accent for selection and primary action, and status colour only where state carries meaning.\n\nDensity is high but never cluttered. Each mode shows only the essential state; technical depth lives behind tabs, `<details>` disclosures, and `[data-tip]` tooltips marked with a dotted underline. There are no permanent explanatory paragraphs. The 3D viewport is a light CAD backdrop, and parts are called out with numbered assembly balloons on leader lines that match the part tree, the way an assembly drawing does.\n\nThe simulated phone is deliberately a different product: a native mobile app with its own system font, dark bezel and `phone-*` tokens. It represents the real app that receives data over ESP-01 and must not be restyled to match the lab UI. The LCD 1602 is likewise a hardware emulation with its own colours and the only monospace text. The app is light theme only, Vietnamese copy, and runs offline from a static `index.html` with no build step; only the webfonts need the network and both have system fallbacks.",
+    "keyCharacteristics": [
+      "Light only (`color-scheme: light`); cool grey ground, white surfaces, 1px borders.",
+      "One accent, blue, for selection, focus and primary action.",
+      "Status colours (ok / warn / danger) appear only when they describe state.",
+      "Inter with tabular numerals everywhere in the lab UI; JetBrains Mono only on the LCD.",
+      "Secondary information in tooltips and disclosures, never in standing paragraphs.",
+      "Numbered CAD balloons as the 3D labelling device.",
+      "Two embedded foreign identities kept intact: the phone app and the LCD."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Cobalt is the only hue that means \"selected\", \"focused\" or \"primary\". Never introduce a second accent in the lab UI.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Means State Rule",
+        "body": "Green, amber and red appear only when they report a real state (running, warning, danger, measured-vs-design). Never use them for decoration or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Shared Threshold Rule",
+        "body": "Low threshold is always amber and high threshold always green, in every view that shows them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "`font-feature-settings: \"tnum\" 1, \"cv11\" 1` is set on body; every number in the lab UI aligns in columns. Never override it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Is Hardware Rule",
+        "body": "Monospace appears only where it emulates a physical character display. Code-like styling elsewhere is off-system.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Labels and headings are sentence case in Vietnamese; no uppercase tracking labels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Container Before Breakpoint Rule",
+        "body": "Toolbars inside the stage respond to the stage's own width, not the window.",
+        "section": "layout"
+      },
+      {
+        "name": "The Float Only Over 3D Rule",
+        "body": "Translucent white (94%) panels with the Raised shadow are reserved for overlays floating on the 3D viewport. Everything else sits flat in the grid.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the `:root` custom properties for every colour, radius, spacing and font size in the lab UI.",
+      "**Do** put secondary explanation in `[data-tip]` tooltips (dotted underline) or `<details>`; keep one-row section headers.",
+      "**Do** reserve Cobalt for selection, focus and primary action, and status colours for real state.",
+      "**Do** keep tabular numerals on every reading, price and dimension.",
+      "**Do** label 3D parts with numbered balloons that match the part tree, not with long name tags.",
+      "**Do** keep touch targets at 44px on coarse pointers and honour `prefers-reduced-motion`.",
+      "**Do** keep transitions short (0.12–0.18s, `cubic-bezier(.2,.8,.2,1)`) and only on state changes."
+    ],
+    "donts": [
+      "**Don't** restyle the simulated phone or the LCD to match the lab UI; they are separate identities with their own tokens.",
+      "**Don't** add a dark theme; the system is light only.",
+      "**Don't** use JetBrains Mono outside the LCD emulation.",
+      "**Don't** add permanent explanatory paragraphs to panels or sheets.",
+      "**Don't** introduce decorative gradients, glow or glassmorphism in the lab UI; the viewport backdrop, the range fill and the 94% white stage overlays are the only sanctioned uses (the phone keeps its own water-gauge gradient).",
+      "**Don't** nest cards; group rows inside one bordered container with hairline dividers.",
+      "**Don't** add small accent-coloured category labels above titles; the title and its numbered balloon identify the part.",
+      "**Don't** add build tooling, frameworks or network dependencies beyond the two webfonts."
+    ]
+  }
+}

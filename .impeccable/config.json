@@ -1,0 +1,62 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "wide-tracking",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-11-18T04:04:59.392Z",
+        "reason": "Claude judgment: tracking is on the LCD 1602 character-cell emulation in a throwaway decision sketch, not body text"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-18T04:50:32.209Z",
+        "reason": "Claude judgment: flagged wrappers are segmented controls (2px inset track by design) and tab strips whose active underline sits on the border; buttons carry their own padding"
+      },
+      {
+        "rule": "repeating-stripes-gradient",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-18T04:50:32.379Z",
+        "reason": "Claude judgment: stripes are the literal 16x2 character-cell grid of an unpowered LCD 1602, domain-appropriate"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-11-18T05:10:32.059Z",
+        "reason": "Claude judgment: unchosen decision-round sketch, not shipped; its fonts belong to a rejected direction"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-11-18T05:10:32.241Z",
+        "reason": "Claude judgment: unchosen decision-round sketch, not shipped; its fonts belong to a rejected direction"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-console.html"
+        ],
+        "createdAt": "2026-11-18T05:10:32.441Z",
+        "reason": "Claude judgment: unchosen decision-round sketch, not shipped; its fonts belong to a rejected direction"
+      }
+    ]
+  }
+}
