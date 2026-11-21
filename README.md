@@ -36,7 +36,7 @@ Nút **Hiển thị** trên dock (mọi workspace): kiểu (Sơ đồ / 3D / Th�
 
 - **Sơ đồ** — sơ đồ đấu nối thực tế.
 - **3D** — mô hình kỹ thuật sạch (mặc định).
-- **Thực tế** — cùng mô hình đặt trên bàn gỗ trong một góc phòng lab nhỏ (cửa sổ bên trái, bảng treo dụng cụ, kệ, thảm cắt, đồng hồ vạn năng). Nắng qua cửa sổ in vệt lá cây lên bàn và mô hình, bóng đổ mềm; gỗ, tường, cảnh ngoài cửa sổ và mặt nạ vệt nắng là texture tạo bằng Codex (`js/lab-tex.js`, prompt trong `assets/ref/PROMPTS.md`); nước trong khúc xạ thước và bơm phía sau, có vạch mặt nước; thành PET/hộp nhựa chỉ phản chiếu cửa sổ; ống silicone bán trong; mạch in có chữ lụa; kính LCD phản chiếu. Mọi công cụ (tháo rời, mặt cắt — chỉ cắt mô hình, không cắt bàn —, thước đo, chọn bộ phận) vẫn hoạt động. Máy yếu/điện thoại tự giảm chi tiết (bỏ chi tiết vi mô, độ phân giải 1×).
+- **Thực tế** — cùng mô hình đặt trên bàn gỗ trong một góc phòng lab nhỏ (cửa sổ bên trái, bảng treo dụng cụ, kệ, thảm cắt, đồng hồ vạn năng). Nắng qua cửa sổ in vệt lá cây lên bàn và mô hình, bóng đổ mềm; gỗ, tường, cảnh ngoài cửa sổ và mặt nạ vệt nắng là texture tạo bằng Codex (`js/lab-tex.js`, prompt trong `assets/ref/PROMPTS.md`); nước trong khúc xạ thước và bơm phía sau, có vạch mặt nước; thành PET/hộp nhựa chỉ phản chiếu cửa sổ; ống silicone bán trong; mạch in có chữ lụa; kính LCD phản chiếu. Mọi công cụ (tháo rời, mặt cắt — chỉ cắt mô hình, không cắt bàn —, thước đo, chọn bộ phận) vẫn hoạt động. Ánh sáng và phản chiếu lấy từ ảnh HDRI phòng thật; tấm Formex, hộp, mica được bo cạnh ~1 mm; nước khúc xạ thật (Chi tiết cao); vệt bóng tiếp xúc mềm dưới các khối. Máy yếu/điện thoại tự giảm chi tiết (tắt khúc xạ, bỏ chi tiết vi mô, độ phân giải 1×).
 - **So sánh** — mô hình Thực tế đặt cạnh ảnh ngoài đời; chọn góc ảnh thì camera 3D chuyển theo.
 
 ## Cấu trúc
@@ -50,6 +50,8 @@ Nút **Hiển thị** trên dock (mọi workspace): kiểu (Sơ đồ / 3D / Th�
 | `js/lab3d.js` | Bối cảnh phòng lab của chế độ Thực tế (bàn, tường, cửa sổ, vệt nắng, đồ trên bàn). Texture canvas dự phòng, thay bằng ảnh Codex trong `js/lab-tex.js` (tải khi bật Thực tế lần đầu). |
 | `js/drawings.js` | Bản vẽ SVG sinh từ `design.js`. |
 | `js/app.js` | Giao diện, điện thoại, hồ sơ chế tạo. |
+| `assets/env/small_empty_room_1_1k.hdr` | Ảnh môi trường HDRI cho ánh sáng và phản chiếu của chế độ Thực tế. Nguồn: Poly Haven (polyhaven.com), giấy phép CC0. Mở bằng `file://` thì trình duyệt chặn đọc file này, app tự dùng môi trường dựng sẵn. |
+| `vendor/RGBELoader.js`, `vendor/RoundedBoxGeometry.js` | Từ Three.js 0.147.0 (examples/js, MIT): đọc HDRI và dựng khối bo cạnh. |
 | `assets/ref/` | Ảnh ngoài đời. Ảnh thật lấy từ Wikimedia Commons (nguồn, tác giả, giấy phép trong `assets/ref/PROMPTS.md` và trong app). Thư mục `ai/` chứa ảnh minh họa tạo bằng AI (Codex image generation) cho linh kiện không có ảnh thật và cho mô hình hoàn chỉnh; prompt gốc nằm cạnh mỗi ảnh (`*.prompt.txt`) và trong `PROMPTS.md`. |
 | `tests/selftest.js` | `node tests/selftest.js` — kiểm tra nhất quán kích thước và các kịch bản an toàn. |
 

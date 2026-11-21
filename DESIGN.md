@@ -375,6 +375,8 @@ Floating top-left on the stage: a 9px status dot with a 3px halo, a 13px semibol
 ### 3D Viewport
 A light CAD-viewer backdrop: vertical gradient from #edf1f5 to #cdd5df, white model materials, water in Water Sky, threshold rings in the shared threshold colours.
 
+**Thực tế realism.** Lighting and reflections come from a real HDRI room (Poly Haven `small_empty_room_1`, CC0), scaled to 0.45 and clamped at 1.4 so window reflections on clear plastic and silicone stay visible without blowing out; the baked colour-panel room remains the fallback (file:// or load failure). Formex plates, ABS, mica and relay shells use rounded boxes (~1 mm radius) while printed parts keep square boxes; CAD edge lines still follow the square box. On Chi tiết cao the water uses transmission (ior 1.33, thickness 30, depth tint #2f9cbf) and is the only transmissive material; clear plastics stay reflection-only. Soft blurred contact shadows sit under the base, platform, tray, source box, tank (round) and control boxes, drawn once per build inside the fx group.
+
 **Current and signal overlays.** Energised wires carry sliding stripes along their own geometry, toggled in Hiển thị › Dòng điện & tín hiệu (on by default): amber `#ffc21a` for pump current (5V → COM → NO → pump → GND, conventional direction) and cyan `#3fd0f0` for logic (D6 → relay IN while the pump runs; one TRIG pulse and one ECHO pulse per displayed measurement, ECHO missing when the sensor fault cuts it; a UART frame from TX1 to the ESP-01). Speeds are real-time, not scaled by sim speed. Reduced motion freezes stripes and parks pulses mid-wire so the energised path is still readable. White splash rings mark where the pump stream meets the water.
 
 ### Học nhanh (guided tour)

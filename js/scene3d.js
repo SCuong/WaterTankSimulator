@@ -129,6 +129,20 @@
     const pm = new THREE.PMREMGenerator(renderer), rt = pm.fromScene(s, 0.02, 10, 12000); pm.dispose();
     s.traverse((o) => { if (o.geometry) o.geometry.dispose(); }); return rt.texture;
   }
+  // HDRI phòng thật (Poly Haven, CC0): phản chiếu trên nhựa trong, nước, kim loại, mạch in như ảnh chụp.
+  // Mở index.html bằng file:// thì trình duyệt chặn đọc file → giữ môi trường dựng sẵn ở trên.
+  // HDRI phòng sáng hơn môi trường cũ: hạ để nắng cửa sổ (đèn chính) vẫn tạo khối. Điểm cửa sổ sáng gấp hàng chục lần phần còn lại:
+  // chặn trần để phản chiếu trên nhựa trong / ống silicone còn thấy được cửa sổ mà không cháy trắng che mất vật phía sau
+  const ENV_GAIN = 0.45, ENV_MAX = 1.4;
+  function loadHdri() {
+    if (!THREE.RGBELoader) return;
+    new THREE.RGBELoader().setDataType(THREE.FloatType).load('assets/env/small_empty_room_1_1k.hdr', (hdr) => {
+      const px = hdr.image.data; for (let i = 0; i < px.length; i++) if (i % 4 !== 3) px[i] = Math.min(px[i] * ENV_GAIN, ENV_MAX);
+      hdr.mapping = THREE.EquirectangularReflectionMapping; hdr.needsUpdate = true;
+      const pm = new THREE.PMREMGenerator(renderer), rt = pm.fromEquirectangular(hdr); pm.dispose(); hdr.dispose();
+      envTex = rt.texture; if (look === 'real') scene.environment = envTex;
+    }, undefined, () => {});
+  }
   // Tham số từng vật liệu cho mỗi chế độ; mesh dùng chung vật liệu nên đổi tại chỗ là đủ
   function lookParams(real) {
     const T = realTex;
@@ -145,7 +159,9 @@
       // Nước trong: khúc xạ cảnh phía sau (thước, khay, bơm), ngả xanh lơ theo độ sâu
       // Nước: bán trong ngả xanh lơ nhạt + mặt gợn phản chiếu cửa sổ. Không dùng transmission: lượt khúc xạ của r147
       // vẽ lại cả cảnh mỗi khung, chậm gấp 2–5 lần trên GPU tích hợp
-      water: real ? { transmission: 0, opacity: 0.5, roughness: 0.02, color: 0x1a6680, normalMap: rippleTex, normalScale: new THREE.Vector2(0.3, 0.3), specularIntensity: 1, envMapIntensity: 1.6, thickness: 0, attenuationDistance: Infinity }
+      // Chi tiết cao: nước khúc xạ thật (thước, khay, bơm phía sau bị bẻ cong và ngả xanh theo độ sâu) — chỉ nước dùng transmission, nhựa vẫn chỉ phản chiếu
+      water: real && quality === 'high' ? { transmission: 1, opacity: 1, roughness: 0.03, color: 0xffffff, ior: 1.33, thickness: 30, attenuationColor: new THREE.Color(0x2f9cbf), attenuationDistance: 50, normalMap: rippleTex, normalScale: new THREE.Vector2(0.3, 0.3), specularIntensity: 1, envMapIntensity: 1.3 }
+        : real ? { transmission: 0, opacity: 0.5, roughness: 0.02, color: 0x1a6680, normalMap: rippleTex, normalScale: new THREE.Vector2(0.3, 0.3), specularIntensity: 1, envMapIntensity: 1.6, thickness: 0, attenuationDistance: Infinity }
         : { transmission: 0, opacity: 0.6, roughness: 0.12, color: 0x2a9fd0, normalMap: null, thickness: 0, attenuationDistance: Infinity },
       // Silicone trong: bán trong, vẽ cả mặt trong để thấy lòng ống rỗng, phản chiếu bóng
       tube: real ? { transmission: 0, opacity: 0.24, roughness: 0.1, color: 0xe6eff0, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1.6, side: THREE.DoubleSide } : { transmission: 0, opacity: 0.5, roughness: 0.3, color: 0xf4f6f7, clearcoat: 0, envMapIntensity: 1, side: THREE.FrontSide },
@@ -208,7 +224,7 @@
     const st = real ? THREE.VSMShadowMap : THREE.PCFSoftShadowMap; // VSM: bóng nắng mềm thật (PCFSoft bỏ qua radius)
     if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; if (L.sun.shadow.map) { L.sun.shadow.map.dispose(); L.sun.shadow.map = null; } scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((mm) => { mm.needsUpdate = true; }); }); }
     renderer.toneMapping = real ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping; renderer.toneMappingExposure = real ? 0.8 : 1;
-    if (real && !envTex) envTex = bakeEnv(lab.bounds);
+    if (real && !envTex) { envTex = bakeEnv(lab.bounds); loadHdri(); } // dùng ngay môi trường dựng sẵn, HDRI thật thay vào khi tải xong
     scene.environment = real ? envTex : null;
     // Camera không chui xuống gầm bàn, không lùi ra khỏi phòng
     controls.maxPolarAngle = Math.PI * (real ? 0.485 : 0.88); controls.maxDistance = real ? 2300 : 4000;
@@ -264,10 +280,15 @@
 
   // ---------- dựng hình ----------
   function edgesOf(g, geo, mesh, mat) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(geo), mat || M.edge); e.position.copy(mesh.position); e.rotation.copy(mesh.rotation); g.add(e); }
+  // Đồ thật không có cạnh sắc 90°: tấm Formex, hộp ABS, mica, vỏ relay được bo ~1 mm để cạnh bắt sáng như ngoài đời.
+  // Không bo vật liệu có hình in (mạch in, nhãn): UV của khối bo khác hộp vuông làm lệch hình.
+  let bevelMats = null;
   function box(g, w, h, d, mat, cx, y0, cz, edges) {
-    const geo = new THREE.BoxGeometry(w, h, d), mesh = new THREE.Mesh(geo, mat);
+    if (!bevelMats) bevelMats = new Set([M.formex, M.formexBase, M.abs, M.mica, M.micaBox, M.valve, M.relayBlue, M.black, M.rubber, M.white]);
+    const mn = Math.min(w, h, d), bevel = THREE.RoundedBoxGeometry && bevelMats.has(mat) && mn >= 2.5 && Math.max(w, h, d) >= 12;
+    const geo = bevel ? new THREE.RoundedBoxGeometry(w, h, d, 2, Math.min(1.2, mn * 0.3)) : new THREE.BoxGeometry(w, h, d), mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(cx, y0 + h / 2, cz); mesh.castShadow = !mat.transparent; mesh.receiveShadow = true; g.add(mesh);
-    if (edges) edgesOf(g, geo, mesh);
+    if (edges) { const eg = bevel ? new THREE.BoxGeometry(w, h, d) : geo; edgesOf(g, eg, mesh); if (bevel) eg.dispose(); } // nét CAD vẫn theo hộp vuông
     return mesh;
   }
   function cyl(g, r, h, mat, cx, y0, cz, seg, open) {
@@ -452,6 +473,7 @@
     dyn.leakDrops = new THREE.Group(); fxG.add(dyn.leakDrops);
     for (let i = 0; i < 3; i++) dyn.leakDrops.add(new THREE.Mesh(dropGeo, M.drop));
     dyn.ping = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), M.ping); dyn.ping.rotation.x = -Math.PI / 2; fxG.add(dyn.ping);
+    contactShadows(m);
     fxG.traverse((o) => { o.userData.fx = true; });
 
     // Bóng số kiểu bản vẽ lắp: đánh số theo thứ tự cụm, cây bộ phận dùng cùng số (partNo)
@@ -481,6 +503,24 @@
     if (selected) select(selected);
     lcdText = '';
     view('iso', true);
+  }
+
+  // ---- Bóng tiếp xúc: vệt tối mềm ngay dưới khối đặt trên bàn / trên đế (ánh sáng trời bị che), thứ làm vật "nằm" trên mặt thay vì lơ lửng ----
+  // Vẽ một lần lúc dựng, không tốn khung hình; nằm trong fxG nên ẩn khi tháo rời / đang lắp.
+  let blobTex = null;
+  function contactShadows(m) {
+    if (!blobTex) { // lõi đen chiếm ~2/3 ô, mờ dần ra mép; bình tròn dùng vệt tròn
+      const blob = (round) => canvasTex(256, 256, (x) => { x.filter = 'blur(18px)'; x.fillStyle = '#000'; x.beginPath(); if (round) x.arc(128, 128, 84, 0, 7); else x.rect(44, 44, 168, 168); x.fill(); }, false);
+      blobTex = { rect: blob(false), round: blob(true) };
+    }
+    rootG.updateMatrixWorld(true);
+    for (const id of ['base', 'platform', 'tray', 'reservoir', 'tank', 'megaBox', 'ctrlBox', 'splash', 'lcdPanel']) {
+      if (!parts[id]) continue;
+      const b = new THREE.Box3().setFromObject(parts[id].g); if (b.isEmpty()) continue;
+      const sx = b.max.x - b.min.x, sz = b.max.z - b.min.z, pad = 1.6; // lõi ≈ đáy vật, phần mờ tràn ra ngoài
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(sx * pad, sz * pad), new THREE.MeshBasicMaterial({ map: id === 'tank' ? blobTex.round : blobTex.rect, color: 0x000000, transparent: true, opacity: id === 'base' ? 0.32 : 0.42, depthWrite: false }));
+      pl.rotation.x = -Math.PI / 2; pl.position.set((b.min.x + b.max.x) / 2, b.min.y + 0.25, (b.min.z + b.max.z) / 2); pl.renderOrder = -1; fxG.add(pl);
+    }
   }
 
   // ---------- Đi dây theo bảng đấu nối (Design.pins) ----------
